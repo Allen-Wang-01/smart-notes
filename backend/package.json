@@ -1,0 +1,23 @@
+{
+  "name": "note-app-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "dependencies": {
+    "@huggingface/inference": "^3.6.2",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "https-proxy-agent": "^7.0.6",
+    "node-fetch": "^2.7.0"
+  }
+}

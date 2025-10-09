@@ -1,0 +1,102 @@
+.loginPage {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; // 让卡片垂直居中
+    padding: 1rem;
+    background-color: #f9f9f9;
+}
+
+.loginCard {
+    background: #fff;
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+
+    width: 90%; // 手机端基本占满屏幕
+    max-width: 400px; // 大屏幕限制最大宽度
+    min-width: 300px; // 保证小屏幕不太窄
+
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+
+    font-size: clamp(0.9rem, 1.5vw, 1.2rem); // 字体大小响应式
+}
+
+.loginTitle {
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.formGroup {
+    margin-bottom: 1.25rem;
+    text-align: left;
+
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        color: #444;
+    }
+
+    input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+        &:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+        }
+
+        &.error {
+            border-color: #e74c3c;
+        }
+    }
+
+    .error-message {
+        margin-top: 0.4rem;
+        font-size: 0.85rem;
+        color: #e74c3c;
+    }
+}
+
+
+.loginButton {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    background-color: #007bff;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s ease;
+
+    &:hover {
+        background-color: #0056b3;
+    }
+}
+
+.registerLink {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+
+    a {
+        color: #007bff;
+        text-decoration: none;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+}
