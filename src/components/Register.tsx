@@ -1,24 +1,45 @@
 import React, { useState } from 'react'
 import styles from '../styles/Register.module.scss'
+import { useNavigate } from 'react-router-dom';
+import { useAppDispatch } from '../redux/hooks';
+import { login } from '../redux/slices/authSlice';
+import toast from 'react-hot-toast';
+import axios from 'axios';
 
-interface RegisterProps {
-    handleRegister: (email: string, password: string, confirmPassword: string) => void;
-}
 
-const Register: React.FC<RegisterProps> = ({ handleRegister }) => {
+const Register: React.FC = () => {
+    const [username, setUsername] = useState('')
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
-    const [errors, setErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({})
+    const [errors, setErrors] = useState<{
+        username?: string;
+        email?: string;
+        password?: string;
+        confirmPassword?: string;
+        server?: string;
+    }>({})
+
+    const dispatch = useAppDispatch()
+    const navigate = useNavigate()
 
     const validate = () => {
         const newErrors: typeof errors = {}
+
+        if (!username) {
+            newErrors.username = 'Please enter a username'
+        } else if (username.length < 3) {
+            newErrors.username = 'Username must be at least 3 characters'
+        }
+
         if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
             newErrors.email = "Please enter the vaild email"
         }
 
         if (!password) {
             newErrors.password = "Please enter the password"
+        } else if (password.length < 6) {
+            newErrors.password = 'Password must be at least 6 characters'
         }
 
         if (password !== confirmPassword) {
@@ -30,10 +51,28 @@ const Register: React.FC<RegisterProps> = ({ handleRegister }) => {
     }
 
 
-    const onSubmit = (e: React.FormEvent) => {
+    const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        setErrors({})
         if (validate()) {
-            handleRegister(email, password, confirmPassword)
+            try {
+                const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
+                    username,
+                    email,
+                    password,
+                })
+                // registration successful and login automatically 
+                const { user, accessToken, refreshToken } = response.data
+                dispatch(login({ user, accessToken, refreshToken }))
+                toast.success('Registration successful! Logged in.')
+                navigate('/')
+            } catch (error: any) {
+                const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.'
+                setErrors({
+                    server: errorMessage
+                })
+                toast.error(errorMessage)
+            }
         }
     }
 
@@ -41,7 +80,19 @@ const Register: React.FC<RegisterProps> = ({ handleRegister }) => {
         <div className={styles.registerPage}>
             <div className={styles.registerCard}>
                 <h2 className={styles.title}>Register</h2>
+                {errors.server && <div className={styles.error}>{errors.server}</div>}
                 <form onSubmit={onSubmit} className={styles.form}>
+                    <div className={styles.formGroup}>
+                        <input
+                            type="text"
+                            placeholder="Username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className={styles.input}
+                        />
+                        {errors.username && <div className={styles.error}>{errors.username}</div>}
+                    </div>
+
                     <div className={styles.formGroup}>
                         <input
                             type="email"
