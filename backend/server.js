@@ -6,7 +6,10 @@ import connectDB from './db.js'
 dotenv.config();
 
 const app = express();
-app.use(cors())
+app.use(cors({
+    origin: 'http://localhost:3005',
+    credentials: true,
+}))
 app.use(express.json());
 
 connectDB()
