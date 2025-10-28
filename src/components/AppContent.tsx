@@ -1,5 +1,6 @@
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useAppSelector } from '../redux/hooks';
 import { Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import MainContent from './MainContent';
@@ -10,10 +11,14 @@ import ProtectedRoute from './ProtectedRoute';
 import styles from '../styles/Main.module.scss'
 const AppContent = () => {
     const location = useLocation()
-    const hideSidebar = location.pathname === '/login' || location.pathname === '/register'
+    const navigate = useNavigate()
+    const { isAuthenticated } = useAppSelector((state) => state.auth)
+    const hideSidebar = !isAuthenticated ||
+        location.pathname === '/login' ||
+        location.pathname === '/register'
+
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-    const navigate = useNavigate()
 
     const handleNoteAdded = (noteId: string) => {
         setSelectedNoteId(noteId); // 跳转到新笔记

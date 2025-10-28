@@ -17,6 +17,26 @@
             margin: 0;
         }
 
+        .logoutButton {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary, #888);
+            font-size: 0.9rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+
+            &:hover {
+                background: rgba(255, 75, 75, 0.1);
+                color: #e74c3c;
+            }
+
+            &:active {
+                transform: translateY(1px);
+            }
+        }
+
         .summaryButton,
         .newNoteButton {
             padding: 10px;

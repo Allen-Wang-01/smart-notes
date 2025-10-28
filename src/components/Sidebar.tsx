@@ -2,6 +2,9 @@ import { useContext } from "react";
 import NoteContext from "../context/NoteContext";
 import styles from "../styles/Sidebar.module.scss";
 import { useNavigate } from "react-router-dom";
+import { useAppDispatch } from "../redux/hooks";
+import { logout } from "../redux/slices/authSlice";
+import api from "../api/axios"
 
 interface SidebarProps {
     onNewNote: () => void;
@@ -12,8 +15,21 @@ interface SidebarProps {
 const Sidebar = ({ onNewNote, onSelectNote, closeSidebar }: SidebarProps) => {
     const noteContext = useContext(NoteContext);
     const navigate = useNavigate();
+    const dispatch = useAppDispatch();
     if (!noteContext) return null;
     const { state } = noteContext;
+
+    const handleLogout = async () => {
+        try {
+            await api.post("/api/auth/logout");   // 后端会清除 HttpOnly Cookie
+        } catch (err) {
+            console.error("Logout failed:", err);
+        } finally {
+            dispatch(logout());                   // 清除 Redux
+            if (closeSidebar) closeSidebar();
+            navigate("/login");                   // 跳转登录页
+        }
+    };
 
     const groupedNotes = state.notes.reduce((acc, note) => {
         const date = new Date(note.date).toLocaleDateString();
@@ -37,6 +53,11 @@ const Sidebar = ({ onNewNote, onSelectNote, closeSidebar }: SidebarProps) => {
         <div className={styles.sidebar}>
             <div className={styles.header}>
                 <h2>Notes</h2>
+
+                <button className={styles.logoutButton} onClick={handleLogout}>
+                    Logout
+                </button>
+
                 <button
                     className={styles.summaryButton}
                     onClick={

@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 
 const Login: React.FC = () => {
     const { isAuthenticated } = useAppSelector((state) => state.auth)
-    if (!isAuthenticated) {
+    if (isAuthenticated) {
         return <Navigate to="/" replace />
     }
     const [email, setEmail] = useState("");
