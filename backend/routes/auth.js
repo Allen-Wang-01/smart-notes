@@ -32,7 +32,29 @@ router.post('/register', async (req, res) => {
         })
         //save user data to the database
         await user.save()
-        res.status(201).json({ message: 'User registered successfully' })
+
+        //auto login
+        const accessToken = jwt.sign(
+            { userId: user._id, username: user.username },
+            process.env.ACCESS_TOKEN_SECRET,
+            { expiresIn: '15m' }
+        )
+
+        const refreshToken = jwt.sign(
+            { userId: user._id },
+            process.env.REFRESH_TOKEN_SECRET,
+            { expiresIn: '7d' }
+        )
+        user.refreshToken = refreshToken
+
+        await user.save()
+
+        res.status(201).json({
+            message: 'User registered successfully',
+            user: { id: user._id, username: user.username, email: user.email },
+            accessToken,
+            refreshToken,
+        })
     } catch (error) {
         console.error('Registration error: ', error)
         res.status(500).json({ message: 'Server error' })
