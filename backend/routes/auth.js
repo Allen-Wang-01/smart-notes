@@ -89,7 +89,7 @@ router.post('/login', async (req, res) => {
         }
 
         const accessToken = jwt.sign(
-            { userId: user._id, username: user.name },
+            { userId: user._id, username: user.username },
             process.env.ACCESS_TOKEN_SECRET,
             { expiresIn: '15m' }
         )
@@ -116,7 +116,7 @@ router.post('/login', async (req, res) => {
         //return tokens
         res.json({
             accessToken,
-            user: { id: user._id, username: username, email: user.email }
+            user: { id: user._id, username: user.username, email: user.email }
         })
     } catch (error) {
         console.error('Login error: ', error);
