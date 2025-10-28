@@ -2,6 +2,7 @@ import express from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
+import authMiddleware from '../middleware/authMiddleware.js'
 
 const router = express.Router()
 
@@ -31,7 +32,37 @@ router.post('/register', async (req, res) => {
         })
         //save user data to the database
         await user.save()
-        res.status(201).json({ message: 'User registered successfully' })
+
+        //auto login
+        const accessToken = jwt.sign(
+            { userId: user._id, username: user.username },
+            process.env.ACCESS_TOKEN_SECRET,
+            { expiresIn: '15m' }
+        )
+
+        const refreshToken = jwt.sign(
+            { userId: user._id },
+            process.env.REFRESH_TOKEN_SECRET,
+            { expiresIn: '7d' }
+        )
+        user.refreshToken = refreshToken
+
+        await user.save()
+
+        //http-only cookie
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: false, //false(http) in development environment, true(https) in production
+            sameSite: 'lax', //lax in development, strict in production
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7days
+            path: '/',
+        })
+
+        res.status(201).json({
+            message: 'User registered successfully',
+            user: { id: user._id, username: user.username, email: user.email },
+            accessToken,
+        })
     } catch (error) {
         console.error('Registration error: ', error)
         res.status(500).json({ message: 'Server error' })
@@ -58,7 +89,7 @@ router.post('/login', async (req, res) => {
         }
 
         const accessToken = jwt.sign(
-            { userId: user._id, username: user.name },
+            { userId: user._id, username: user.username },
             process.env.ACCESS_TOKEN_SECRET,
             { expiresIn: '15m' }
         )
@@ -73,11 +104,19 @@ router.post('/login', async (req, res) => {
         user.refreshToken = refreshToken;
         await user.save()
 
+        //http-only cookie
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: false, //false(http) in development environment, true(https) in production
+            sameSite: 'lax', //lax in development, strict in production
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7days
+            path: '/',
+        })
+
         //return tokens
         res.json({
             accessToken,
-            refreshToken,
-            user: { id: user._id, username: username, email: user.email }
+            user: { id: user._id, username: user.username, email: user.email }
         })
     } catch (error) {
         console.error('Login error: ', error);
@@ -87,12 +126,12 @@ router.post('/login', async (req, res) => {
 
 //refresh
 router.post('/refresh', async (req, res) => {
-    try {
-        const { refreshToken } = req.body
-        if (!refreshToken) {
-            return res.status(401).json({ message: 'No refresh token provided' })
-        }
+    const refreshToken = req.cookies.refreshToken //read token from cookie
+    if (!refreshToken) {
+        return res.status(401).json({ message: 'No refresh token' })
+    }
 
+    try {
         //verify refreshToken
         const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET)
 
@@ -128,6 +167,14 @@ router.post('/logout', authMiddleware, async (req, res) => {
         //clear refreshToken 
         user.refreshToken = null
         await user.save()
+
+        //clear cookie
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            path: '/',
+        })
 
         res.json({ message: 'Logged out successfully' })
     } catch (error) {
