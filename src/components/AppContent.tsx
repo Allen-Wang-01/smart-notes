@@ -23,7 +23,7 @@ const AppContent = () => {
             if (isAuthenticated) return;
 
             try {
-                const response = await api.post('/api/auth/refresh');
+                const response = await api.post('/auth/refresh');
                 const { accessToken, user } = response.data;
                 dispatch(login({ accessToken, user }));
             } catch (err) {
