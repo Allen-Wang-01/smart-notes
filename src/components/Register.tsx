@@ -3,11 +3,17 @@ import styles from '../styles/Register.module.scss'
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../redux/hooks';
 import { login } from '../redux/slices/authSlice';
+import { useAppSelector } from '../redux/hooks';
+import { Navigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
 
 const Register: React.FC = () => {
+    const { isAuthenticated } = useAppSelector((state) => state.auth);
+    if (isAuthenticated) {
+        return <Navigate to="/" replace />;
+    }
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")

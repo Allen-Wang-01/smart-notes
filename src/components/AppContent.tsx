@@ -1,10 +1,12 @@
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import MainContent from './MainContent';
 import ReportPage from './ReportPage';
 import Login from './Login';
 import Register from './Register';
+import ProtectedRoute from './ProtectedRoute';
 import styles from '../styles/Main.module.scss'
 const AppContent = () => {
     const location = useLocation()
@@ -53,13 +55,26 @@ const AppContent = () => {
                 onClick={isSidebarOpen ? closeSidebar : undefined} // 点击主内容关闭侧边栏
             >
                 <Routes>
-                    <Route
-                        path="/"
-                        element={<MainContent selectedNoteId={selectedNoteId} onNoteAdded={handleNoteAdded} />}
-                    />
-                    <Route path="/review" element={<ReportPage />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route
+                        path="/"
+                        element={
+                            <ProtectedRoute>
+                                <MainContent selectedNoteId={selectedNoteId} onNoteAdded={handleNoteAdded} />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/review"
+                        element={
+                            <ProtectedRoute>
+                                <ReportPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </div>
         </div>
