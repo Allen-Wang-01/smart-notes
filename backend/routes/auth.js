@@ -49,11 +49,19 @@ router.post('/register', async (req, res) => {
 
         await user.save()
 
+        //http-only cookie
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: false, //false(http) in development environment, true(https) in production
+            sameSite: 'lax', //lax in development, strict in production
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7days
+            path: '/',
+        })
+
         res.status(201).json({
             message: 'User registered successfully',
             user: { id: user._id, username: user.username, email: user.email },
             accessToken,
-            refreshToken,
         })
     } catch (error) {
         console.error('Registration error: ', error)
@@ -96,10 +104,18 @@ router.post('/login', async (req, res) => {
         user.refreshToken = refreshToken;
         await user.save()
 
+        //http-only cookie
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: false, //false(http) in development environment, true(https) in production
+            sameSite: 'lax', //lax in development, strict in production
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7days
+            path: '/',
+        })
+
         //return tokens
         res.json({
             accessToken,
-            refreshToken,
             user: { id: user._id, username: username, email: user.email }
         })
     } catch (error) {
@@ -110,12 +126,12 @@ router.post('/login', async (req, res) => {
 
 //refresh
 router.post('/refresh', async (req, res) => {
-    try {
-        const { refreshToken } = req.body
-        if (!refreshToken) {
-            return res.status(401).json({ message: 'No refresh token provided' })
-        }
+    const refreshToken = req.cookies.refreshToken //read token from cookie
+    if (!refreshToken) {
+        return res.status(401).json({ message: 'No refresh token' })
+    }
 
+    try {
         //verify refreshToken
         const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET)
 
@@ -151,6 +167,14 @@ router.post('/logout', authMiddleware, async (req, res) => {
         //clear refreshToken 
         user.refreshToken = null
         await user.save()
+
+        //clear cookie
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            path: '/',
+        })
 
         res.json({ message: 'Logged out successfully' })
     } catch (error) {
