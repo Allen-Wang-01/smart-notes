@@ -44,8 +44,8 @@ const Login: React.FC = () => {
                     email,
                     password,
                 })
-                const { user, accessToken, refreshToken } = response.data
-                dispatch(login({ user, accessToken, refreshToken }))
+                const { user, accessToken } = response.data
+                dispatch(login({ user, accessToken }))
                 toast.success('Login successful')
                 navigate('/')
             } catch (error: any) {

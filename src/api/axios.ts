@@ -1,9 +1,10 @@
 import axios from "axios";
 import { store } from "../redux/store";
-import { login, logout, updateAccessToken } from "../redux/slices/authSlice";
+import { logout, updateAccessToken } from "../redux/slices/authSlice";
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL,
+    baseURL: '/api',
+    withCredentials: true,
     headers: { 'Content-Type': 'application/json' },
 })
 
@@ -48,11 +49,7 @@ api.interceptors.response.use(
             isRefreshing = true
 
             try {
-                const { refreshToken } = store.getState().auth
-                if (!refreshToken) throw new Error('No refresh token available')
-                const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/refresh`, {
-                    refreshToken,
-                })
+                const response = await axios.post('/api/auth/refresh')
                 const { accessToken: newAccessToken } = response.data
                 store.dispatch(updateAccessToken(newAccessToken))
                 processQueue(null, newAccessToken)
@@ -61,6 +58,7 @@ api.interceptors.response.use(
             } catch (refreshError) {
                 processQueue(refreshError, null)
                 store.dispatch(logout())
+                window.location.href = '/login'
                 return Promise.reject(refreshError)
             } finally {
                 isRefreshing = false

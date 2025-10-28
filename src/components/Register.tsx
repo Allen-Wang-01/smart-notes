@@ -68,8 +68,8 @@ const Register: React.FC = () => {
                     password,
                 })
                 // registration successful and login automatically 
-                const { user, accessToken, refreshToken } = response.data
-                dispatch(login({ user, accessToken, refreshToken }))
+                const { user, accessToken } = response.data
+                dispatch(login({ user, accessToken }))
                 toast.success('Registration successful! Logged in.')
                 navigate('/')
             } catch (error: any) {
