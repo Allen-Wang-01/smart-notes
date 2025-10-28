@@ -1,7 +1,9 @@
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { useAppSelector } from '../redux/hooks';
+import { useState, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { Navigate } from 'react-router-dom';
+import { login } from '../redux/slices/authSlice';
+import api from '../api/axios';
 import Sidebar from './Sidebar';
 import MainContent from './MainContent';
 import ReportPage from './ReportPage';
@@ -10,9 +12,30 @@ import Register from './Register';
 import ProtectedRoute from './ProtectedRoute';
 import styles from '../styles/Main.module.scss'
 const AppContent = () => {
+    const dispatch = useAppDispatch()
     const location = useLocation()
     const navigate = useNavigate()
+
     const { isAuthenticated } = useAppSelector((state) => state.auth)
+
+    useEffect(() => {
+        const restoreLogin = async () => {
+            if (isAuthenticated) return;
+
+            try {
+                const response = await api.post('/auth/refresh');
+                const { accessToken, user } = response.data;
+                dispatch(login({ accessToken, user }));
+            } catch (err) {
+                console.log('No valid session, stay logged out');
+                navigate('/login')
+            }
+        };
+
+        restoreLogin();
+    }, [dispatch, isAuthenticated]);
+
+
     const hideSidebar = !isAuthenticated ||
         location.pathname === '/login' ||
         location.pathname === '/register'
