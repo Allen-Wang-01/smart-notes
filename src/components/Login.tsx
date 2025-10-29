@@ -2,18 +2,12 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../redux/hooks';
 import { login } from '../redux/slices/authSlice';
-import { useAppSelector } from '../redux/hooks';
-import { Navigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios';
 import styles from '../styles/Login.module.scss'
 import toast from 'react-hot-toast';
 
 
 const Login: React.FC = () => {
-    const { isAuthenticated } = useAppSelector((state) => state.auth)
-    if (isAuthenticated) {
-        return <Navigate to="/" replace />
-    }
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("")
     const [errors, setErrors] = useState<{ email?: string; password?: string; server?: string; }>({})
@@ -40,13 +34,12 @@ const Login: React.FC = () => {
 
         if (Object.keys(newErrors).length === 0) {
             try {
-                const response = await axios.post(`/api/auth/login`, {
+                const response = await api.post(`/auth/login`, {
                     email,
                     password,
                 })
                 const { user, accessToken } = response.data
                 dispatch(login({ user, accessToken }))
-                toast.success('Login successful')
                 navigate('/')
             } catch (error: any) {
                 const errorMessage = error.response?.data?.message || 'Login failed. Please try again'

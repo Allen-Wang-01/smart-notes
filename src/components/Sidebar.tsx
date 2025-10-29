@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../redux/hooks";
 import { logout } from "../redux/slices/authSlice";
 import api from "../api/axios"
+import toast from "react-hot-toast";
 
 interface SidebarProps {
     onNewNote: () => void;
@@ -21,13 +22,13 @@ const Sidebar = ({ onNewNote, onSelectNote, closeSidebar }: SidebarProps) => {
 
     const handleLogout = async () => {
         try {
-            await api.post("/api/auth/logout");   // 后端会清除 HttpOnly Cookie
-        } catch (err) {
-            console.error("Logout failed:", err);
+            await api.post('/auth/logout');
+        } catch (err: any) {
+            console.error("Logout API failed:", err);
         } finally {
-            dispatch(logout());                   // 清除 Redux
+            dispatch(logout());
             if (closeSidebar) closeSidebar();
-            navigate("/login");                   // 跳转登录页
+            navigate('/login');
         }
     };
 

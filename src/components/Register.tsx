@@ -6,7 +6,7 @@ import { login } from '../redux/slices/authSlice';
 import { useAppSelector } from '../redux/hooks';
 import { Navigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import api from '../api/axios';
 
 
 const Register: React.FC = () => {
@@ -62,7 +62,7 @@ const Register: React.FC = () => {
         setErrors({})
         if (validate()) {
             try {
-                const response = await axios.post(`/api/auth/register`, {
+                const response = await api.post(`/api/auth/register`, {
                     username,
                     email,
                     password,
@@ -70,7 +70,6 @@ const Register: React.FC = () => {
                 // registration successful and login automatically 
                 const { user, accessToken } = response.data
                 dispatch(login({ user, accessToken }))
-                toast.success('Registration successful! Logged in.')
                 navigate('/')
             } catch (error: any) {
                 const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.'

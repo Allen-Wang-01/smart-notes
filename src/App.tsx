@@ -2,6 +2,7 @@ import { NoteProvider } from './context/NoteContext';
 import { Toaster } from "react-hot-toast";
 import AppContent from './components/AppContent';
 import { BrowserRouter as Router } from 'react-router-dom';
+import ErrorBoundary from './components/ErrorBoundary';
 function App() {
   return (
     <Router>
@@ -28,7 +29,9 @@ function App() {
             },
           }}
         />
-        <AppContent />
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
       </NoteProvider>
     </Router>
   );

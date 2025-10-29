@@ -11,37 +11,67 @@ import Login from './Login';
 import Register from './Register';
 import ProtectedRoute from './ProtectedRoute';
 import styles from '../styles/Main.module.scss'
+
+
+
 const AppContent = () => {
     const dispatch = useAppDispatch()
     const location = useLocation()
     const navigate = useNavigate()
-
     const { isAuthenticated } = useAppSelector((state) => state.auth)
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
     useEffect(() => {
-        const restoreLogin = async () => {
-            if (isAuthenticated) return;
+        let isMounted = true;
+
+        const attemptRefresh = async () => {
+
+            if (isAuthenticated) {
+                setIsLoading(false);
+                return;
+            }
+
+
+            if (['/login', '/register'].includes(location.pathname)) {
+                setIsLoading(false);
+                return;
+            }
 
             try {
-                const response = await api.post('/auth/refresh');
-                const { accessToken, user } = response.data;
-                dispatch(login({ accessToken, user }));
+                const { data } = await api.post('/auth/refresh');
+                if (isMounted) {
+                    dispatch(login({ accessToken: data.accessToken, user: data.user }));
+                }
             } catch (err) {
-                console.log('No valid session, stay logged out');
-                navigate('/login')
+                if (isMounted) {
+                    navigate('/login');
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
             }
         };
 
-        restoreLogin();
-    }, [dispatch, isAuthenticated]);
+        attemptRefresh();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+
+
+    if (isLoading) {
+        return <div className={styles.loading}>Loading...</div>;
+    }
 
 
     const hideSidebar = !isAuthenticated ||
         location.pathname === '/login' ||
         location.pathname === '/register'
-
-    const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
     const handleNoteAdded = (noteId: string) => {
         setSelectedNoteId(noteId); // 跳转到新笔记
