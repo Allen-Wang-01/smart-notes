@@ -157,29 +157,23 @@ router.post('/refresh', async (req, res) => {
 })
 
 //logout
-router.post('/logout', authMiddleware, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.userId)
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' })
-        }
+router.post('/logout', async (req, res) => {
+    const token = req.cookies?.refreshToken;
 
-        //clear refreshToken 
-        user.refreshToken = null
-        await user.save()
+    res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+    });
 
-        //clear cookie
-        res.clearCookie('refreshToken', {
-            httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
-            path: '/',
-        })
-
-        res.json({ message: 'Logged out successfully' })
-    } catch (error) {
-        console.error('Logout error: ', error)
-        res.status(500).json({ message: 'Server error' })
+    if (token) {
+        await User.updateOne(
+            { refreshToken: token },
+            { $set: { refreshToken: null } }
+        );
     }
+
+    res.json({ message: 'Logged out successfully' });
 })
 export default router

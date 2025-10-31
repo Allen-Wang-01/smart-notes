@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../redux/hooks';
 import { login } from '../redux/slices/authSlice';
 import api from '../api/axios';
 import styles from '../styles/Login.module.scss'
 import toast from 'react-hot-toast';
+import { useAppSelector } from '../redux/hooks';
 
 
 const Login: React.FC = () => {
@@ -13,6 +14,13 @@ const Login: React.FC = () => {
     const [errors, setErrors] = useState<{ email?: string; password?: string; server?: string; }>({})
     const dispatch = useAppDispatch()
     const navigate = useNavigate()
+    const { isAuthenticated, isLoading } = useAppSelector(state => state.auth)
+
+    useEffect(() => {
+        if (!isLoading && isAuthenticated) {
+            navigate('/', { replace: true });
+        }
+    }, [isAuthenticated, navigate, isLoading,]);
 
     const validateEmail = (value: string) => {
         const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -49,45 +57,52 @@ const Login: React.FC = () => {
         }
     }
 
-    return (
-        <div className={styles.loginPage}>
-            <div className={styles.loginCard}>
-                <h2 className={styles.loginTitle}>Login</h2>
-                {errors.server && <p className={styles.errorMessage}>{errors.server}</p>}
-                <form onSubmit={onSubmit} noValidate>
-                    <div className={styles.formGroup}>
-                        <label htmlFor="email">Email</label>
-                        <input
-                            type="email"
-                            id="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className={errors.email ? "error" : ""}
-                            placeholder='Please Enter your email'
-                        />
-                        {errors.email && <p className={styles.errorMessage}>{errors.email}</p>}
-                    </div>
+    if (isLoading) {
+        return <div>Loading...</div>;
+    }
 
-                    <div className={styles.formGroup}>
-                        <label htmlFor="password">Password</label>
-                        <input
-                            type="password"
-                            id="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className={errors.password ? "error" : ""}
-                            placeholder='Pease enter password'
-                        />
-                    </div>
+    if (!isAuthenticated) {
+        return (
+            <div className={styles.loginPage}>
+                <div className={styles.loginCard}>
+                    <h2 className={styles.loginTitle}>Login</h2>
+                    {errors.server && <p className={styles.errorMessage}>{errors.server}</p>}
+                    <form onSubmit={onSubmit} noValidate>
+                        <div className={styles.formGroup}>
+                            <label htmlFor="email">Email</label>
+                            <input
+                                type="email"
+                                id="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className={errors.email ? "error" : ""}
+                                placeholder='Please Enter your email'
+                            />
+                            {errors.email && <p className={styles.errorMessage}>{errors.email}</p>}
+                        </div>
 
-                    <button type='submit' className={styles.loginButton}>Login</button>
-                </form>
-                <p className={styles.registerLink}>
-                    Don't have an account ? <a href="/register">Register</a>
-                </p>
+                        <div className={styles.formGroup}>
+                            <label htmlFor="password">Password</label>
+                            <input
+                                type="password"
+                                id="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className={errors.password ? "error" : ""}
+                                placeholder='Pease enter password'
+                            />
+                        </div>
+
+                        <button type='submit' className={styles.loginButton}>Login</button>
+                    </form>
+                    <p className={styles.registerLink}>
+                        Don't have an account ? <a href="/register">Register</a>
+                    </p>
+                </div >
             </div >
-        </div >
-    )
+        )
+    }
+    return null
 }
 
 export default Login

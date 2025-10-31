@@ -1,19 +1,15 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import styles from '../styles/Register.module.scss'
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../redux/hooks';
 import { login } from '../redux/slices/authSlice';
 import { useAppSelector } from '../redux/hooks';
-import { Navigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 
 
 const Register: React.FC = () => {
-    const { isAuthenticated } = useAppSelector((state) => state.auth);
-    if (isAuthenticated) {
-        return <Navigate to="/" replace />;
-    }
+    const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -28,6 +24,12 @@ const Register: React.FC = () => {
 
     const dispatch = useAppDispatch()
     const navigate = useNavigate()
+
+    useEffect(() => {
+        if (!isLoading && isAuthenticated) {
+            navigate('/', { replace: true });
+        }
+    }, [isAuthenticated, navigate, isLoading,]);
 
     const validate = () => {
         const newErrors: typeof errors = {}
@@ -81,67 +83,75 @@ const Register: React.FC = () => {
         }
     }
 
-    return (
-        <div className={styles.registerPage}>
-            <div className={styles.registerCard}>
-                <h2 className={styles.title}>Register</h2>
-                {errors.server && <div className={styles.error}>{errors.server}</div>}
-                <form onSubmit={onSubmit} className={styles.form}>
-                    <div className={styles.formGroup}>
-                        <input
-                            type="text"
-                            placeholder="Username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className={styles.input}
-                        />
-                        {errors.username && <div className={styles.error}>{errors.username}</div>}
+    if (isLoading) {
+        return <div>Loading...</div>;
+    }
+
+    if (!isAuthenticated) {
+
+        return (
+            <div className={styles.registerPage}>
+                <div className={styles.registerCard}>
+                    <h2 className={styles.title}>Register</h2>
+                    {errors.server && <div className={styles.error}>{errors.server}</div>}
+                    <form onSubmit={onSubmit} className={styles.form}>
+                        <div className={styles.formGroup}>
+                            <input
+                                type="text"
+                                placeholder="Username"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className={styles.input}
+                            />
+                            {errors.username && <div className={styles.error}>{errors.username}</div>}
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <input
+                                type="email"
+                                placeholder="Email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className={styles.input}
+                            />
+                            {errors.email && <div className={styles.error}>{errors.email}</div>}
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <input
+                                type="password"
+                                value={password}
+                                placeholder='Password'
+                                onChange={(e) => setPassword(e.target.value)}
+                                className={styles.input}
+                            />
+                            {errors.password && <div className={styles.error}>{errors.password}</div>}
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <input
+                                type="password"
+                                placeholder="Confirm Password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className={styles.input}
+                            />
+                            {errors.confirmPassword && <div className={styles.error}>{errors.confirmPassword}</div>}
+                        </div>
+
+                        <button type="submit" className={styles.button}>
+                            Register
+                        </button>
+                    </form>
+
+                    <div className={styles.linkWrapper}>
+                        Already have an account? <a href="/login" className={styles.link}>Login</a>
                     </div>
-
-                    <div className={styles.formGroup}>
-                        <input
-                            type="email"
-                            placeholder="Email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className={styles.input}
-                        />
-                        {errors.email && <div className={styles.error}>{errors.email}</div>}
-                    </div>
-
-                    <div className={styles.formGroup}>
-                        <input
-                            type="password"
-                            value={password}
-                            placeholder='Password'
-                            onChange={(e) => setPassword(e.target.value)}
-                            className={styles.input}
-                        />
-                        {errors.password && <div className={styles.error}>{errors.password}</div>}
-                    </div>
-
-                    <div className={styles.formGroup}>
-                        <input
-                            type="password"
-                            placeholder="Confirm Password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className={styles.input}
-                        />
-                        {errors.confirmPassword && <div className={styles.error}>{errors.confirmPassword}</div>}
-                    </div>
-
-                    <button type="submit" className={styles.button}>
-                        Register
-                    </button>
-                </form>
-
-                <div className={styles.linkWrapper}>
-                    Already have an account? <a href="/login" className={styles.link}>Login</a>
                 </div>
             </div>
-        </div>
-    )
+        )
+    }
+    return null
 }
 
 export default Register

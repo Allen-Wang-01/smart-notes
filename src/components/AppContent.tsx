@@ -2,7 +2,7 @@ import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { Navigate } from 'react-router-dom';
-import { login } from '../redux/slices/authSlice';
+import { login, setLoading } from '../redux/slices/authSlice';
 import api from '../api/axios';
 import Sidebar from './Sidebar';
 import MainContent from './MainContent';
@@ -19,38 +19,36 @@ const AppContent = () => {
     const location = useLocation()
     const navigate = useNavigate()
     const { isAuthenticated } = useAppSelector((state) => state.auth)
-    const [isLoading, setIsLoading] = useState(true);
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
     useEffect(() => {
+        console.log('AppContent useEffect 执行了！pathname:', location.pathname);
+        console.log("authenticated appcontent", isAuthenticated)
         let isMounted = true;
 
         const attemptRefresh = async () => {
 
             if (isAuthenticated) {
-                setIsLoading(false);
-                return;
-            }
-
-
-            if (['/login', '/register'].includes(location.pathname)) {
-                setIsLoading(false);
+                if (isMounted) dispatch(setLoading(false))
                 return;
             }
 
             try {
                 const { data } = await api.post('/auth/refresh');
+                console.log(isMounted, "is Mounted")
                 if (isMounted) {
                     dispatch(login({ accessToken: data.accessToken, user: data.user }));
                 }
+                console.log('AppContent logged in')
             } catch (err) {
-                if (isMounted) {
-                    navigate('/login');
+                console.log('Refresh failed:', err);
+                if (isMounted && !['/login', '/register'].includes(location.pathname)) {
+                    navigate('/login', { replace: true });
                 }
             } finally {
                 if (isMounted) {
-                    setIsLoading(false);
+                    dispatch(setLoading(false))
                 }
             }
         };
@@ -61,13 +59,6 @@ const AppContent = () => {
             isMounted = false;
         };
     }, []);
-
-
-
-    if (isLoading) {
-        return <div className={styles.loading}>Loading...</div>;
-    }
-
 
     const hideSidebar = !isAuthenticated ||
         location.pathname === '/login' ||

@@ -34,6 +34,11 @@ api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config
+
+        if (originalRequest.headers['X-Skip-Retry'] || originalRequest.url?.includes('/auth/logout')) {
+            return Promise.reject(error);
+        }
+
         if (error.response?.status === 401 && !originalRequest._retry) {
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
@@ -57,8 +62,6 @@ api.interceptors.response.use(
                 return api(originalRequest)
             } catch (refreshError) {
                 processQueue(refreshError, null)
-                store.dispatch(logout())
-                window.location.href = '/login'
                 return Promise.reject(refreshError)
             } finally {
                 isRefreshing = false

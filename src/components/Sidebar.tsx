@@ -22,13 +22,15 @@ const Sidebar = ({ onNewNote, onSelectNote, closeSidebar }: SidebarProps) => {
 
     const handleLogout = async () => {
         try {
-            await api.post('/auth/logout');
+            await api.post('/auth/logout', {}, {
+                headers: { 'X-Skip-Retry': 'true' }
+            });
         } catch (err: any) {
-            console.error("Logout API failed:", err);
+            console.error('Logout failed:', err);
         } finally {
             dispatch(logout());
             if (closeSidebar) closeSidebar();
-            navigate('/login');
+            navigate('/login', { replace: true });
         }
     };
 
