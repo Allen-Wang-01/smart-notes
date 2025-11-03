@@ -1,4 +1,5 @@
 import Note from '../models/Note'
+import aiQueue from '../queues/aiQueue'
 
 /**
  * CREATE: Create a new note from NewNoteCard
@@ -21,8 +22,9 @@ export const createNote = async (req, res) => {
         })
 
         await note.save()
-        // TODO: Trigger BullMQ job in next step
-        // await aiQueue.add('process-note', { noteId: note._id });
+
+        // Trigger BullMQ job
+        await aiQueue.add('process-note', { noteId: note._id });
 
         res.status(201).json({
             message: 'Note created. AI is organizing your content.',

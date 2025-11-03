@@ -5,6 +5,7 @@ import connectDB from './db.js'
 import authRoutes from './routes/auth.js'
 import cookieParser from 'cookie-parser';
 import noteRouter from './routes/note.js'
+import './workers/aiWorker.js'
 dotenv.config();
 
 const app = express();
@@ -24,7 +25,10 @@ app.get('/', (req, res) => {
     res.send('Auth Backend is running')
 })
 
+
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log('AI Worker started. Ready to process notes.');
 });
