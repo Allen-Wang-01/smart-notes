@@ -1,85 +1,42 @@
-import { useState, useContext } from "react";
-import { getPromptForCategory } from '../utils/promptGenerator'
+import { useState } from "react";
 import toast from "react-hot-toast";
-import { v4 as uuidv4 } from 'uuid'
 import styles from '../styles/NewNoteCard.module.scss'
-import axios from "axios";
+import { useCreateNoteMutation } from "../hooks/useCreateNoteMutation";
 import TextareaAutosize from "react-textarea-autosize";
 
 
-interface NewNoteCardProps {
-    dispatch: React.Dispatch<any>;
-    onNoteAdded: (noteId: string) => void; // 新增回调，用于跳转
-}
+// interface NewNoteCardProps {
+//     onNoteAdded: (noteId: string) => void; // 新增回调，用于跳转
+// }
 
-const NewNoteCard = ({ dispatch, onNoteAdded }: NewNoteCardProps) => {
+const NewNoteCard = () => {
     const [content, setContent] = useState("")
     const [category, setCategory] = useState<"meeting" | "study" | "interview">("meeting");
-    const [isLoading, setIsLoading] = useState(false)
-    const [continueCreating, setContinueCreating] = useState(false) //fast creating
-
-    const generateTitleWithHuggingFace = async (content: string, category: string) => {
-        try {
-            const titlePrompt = `Generate a concise and descriptive title (no more than 10 words) for the following content:\n${content}`;
-            const response = await axios.post("http://localhost:3001/api/huggingface", {
-                prompt: titlePrompt,
-                model: "google/flan-t5-base", // 更适合做标题生成的模型
-                maxLength: 10,
-            });
-            return response.data[0].generated_text.trim();
-        } catch (error) {
-            console.error("Title generation error:", error);
-            return `${category === "meeting" ? "会议记录" : category === "study" ? "学习总结" : "面试复盘"} - ${new Date().toLocaleDateString()}`;
-        }
-    };
-
+    const mutation = useCreateNoteMutation()
 
     const handleSubmit = async () => {
         if (!content.trim()) {
             toast.error("Please enter the note content")
             return;
         }
-        setIsLoading(true)
-
-        try {
-            const prompt = getPromptForCategory(content, category);
-
-            const contentResponse = await axios.post("http://localhost:3001/api/huggingface", {
-                prompt,
-                model: "mistralai/Mistral-7B-Instruct-v0.2",
-                maxLength: 400,
-            });
-            const processedContent = contentResponse.data[0].generated_text;
-
-
-            const generatedTitle = await generateTitleWithHuggingFace(content, category);
-            const newNote = {
-                id: uuidv4(),
-                title: generatedTitle,
-                content: processedContent,
-                date: new Date().toISOString(),
-                category,
-            };
-
-            dispatch({ type: "ADD_NOTE", payload: newNote });
-            toast.success("Note has been saved, click the sidebar to review", {
-                duration: 4000,
-            })
-            if (!continueCreating) {
-                setContent("")
-                setCategory("meeting")
-            } else {
-                setContent("") //keep the catefory, but clear the content
+        mutation.mutate(
+            { rawContent: content },
+            {
+                onSuccess: () => {
+                    setContent("")
+                    toast.success("Note created! AI is typing...")
+                }
             }
-            onNoteAdded(newNote.id);  // 通知父组件跳转
-        } catch (error) {
-            console.error("Hugging Face API error:", error);
-            toast.error("failed, please try again")
-        } finally {
-            setIsLoading(false)
-        }
+        )
+
     }
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey && content.trim() && !mutation.isPending) {
+            e.preventDefault()
+            handleSubmit()
+        }
+    }
 
     return (
         <div className={styles.newNoteCard}>
@@ -90,6 +47,7 @@ const NewNoteCard = ({ dispatch, onNoteAdded }: NewNoteCardProps) => {
                 minRows={3}
                 maxRows={10}
                 className={styles.textarea}
+                disabled={mutation.isPending}
             />
             <div className={styles.container}>
                 <div className={styles.categoryButtons}>
@@ -100,27 +58,16 @@ const NewNoteCard = ({ dispatch, onNoteAdded }: NewNoteCardProps) => {
                             onClick={() =>
                                 setCategory(cat as "meeting" | "study" | "interview")
                             }
+                            disabled={mutation.isPending}
                         >
                             {cat}
                         </button>
                     ))}
                 </div>
-                <label className={styles.continueCreating}>
-                    <input
-                        type="checkbox"
-                        checked={continueCreating}
-                        onChange={(e) => setContinueCreating(e.target.checked)}
-                    />
-                    继续创建
-                </label>
 
                 <button onClick={handleSubmit} className={styles.sendButton}
-                    onKeyDown={(e) => {
-                        if (content.trim() !== '' && e.key === 'Enter' && !isLoading) {
-                            handleSubmit()
-                        }
-                    }}>
-                    {isLoading ? (
+                    onKeyDown={handleKeyDown} disabled={mutation.isPending}>
+                    {mutation.isPending ? (
                         <svg
                             className={styles.spinner}
                             xmlns="http://www.w3.org/2000/svg"

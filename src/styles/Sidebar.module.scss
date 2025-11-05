@@ -114,6 +114,49 @@
         }
     }
 
+    .loadingMore {
+        text-align: center;
+        font-size: 1rem;
+        color: #555;
+        margin: 1.5rem auto;
+        padding: 0.75rem 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border-radius: 9999px;
+        background: rgba(0, 0, 0, 0.05);
+        backdrop-filter: blur(4px);
+        animation: pulse 1.5s infinite;
+        transition: all 0.3s ease;
+    }
+
+    @keyframes pulse {
+        0% {
+            opacity: 0.7;
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        100% {
+            opacity: 0.7;
+            transform: scale(1);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .loadingMore {
+            font-size: 0.875rem;
+            margin: 1rem auto;
+            padding: 0.5rem 0.75rem;
+        }
+    }
+
+
     // 响应式调整
     @media (max-width: 768px) {
         padding: 15px;
@@ -138,16 +181,16 @@
 
                 .noteList {
                     .noteItem {
-                        padding: 12px; // 增大点击区域
+                        padding: 12px;
                         font-size: 0.9rem;
 
                         .noteTitle {
                             flex: 1;
                             font-size: 1rem;
-                            max-width: 180px; // 限制最大宽度，防止溢出
+                            max-width: 180px;
                             white-space: nowrap;
                             overflow: hidden;
-                            text-overflow: ellipsis; // 过长时显示省略号
+                            text-overflow: ellipsis;
                         }
 
                         .noteTime {
@@ -160,6 +203,11 @@
             .empty {
                 font-size: 0.9rem;
             }
+        }
+
+        .loadingMore {
+            font-size: 1.1rem;
+            margin: 2rem auto;
         }
     }
 }

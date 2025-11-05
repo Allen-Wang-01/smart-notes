@@ -23,8 +23,6 @@ const AppContent = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
     useEffect(() => {
-        console.log('AppContent useEffect 执行了！pathname:', location.pathname);
-        console.log("authenticated appcontent", isAuthenticated)
         let isMounted = true;
 
         const attemptRefresh = async () => {
@@ -65,7 +63,7 @@ const AppContent = () => {
         location.pathname === '/register'
 
     const handleNoteAdded = (noteId: string) => {
-        setSelectedNoteId(noteId); // 跳转到新笔记
+        setSelectedNoteId(noteId); // jump to new note
     };
 
     const toggleSidebar = () => {
@@ -94,14 +92,13 @@ const AppContent = () => {
                             setSelectedNoteId(null)
                             navigate('/')
                         }}
-                        onSelectNote={setSelectedNoteId}
-                        closeSidebar={closeSidebar} // 传递关闭侧边栏的回调
+                        closeSidebar={closeSidebar}
                     />
                 </div>
             )}
             <div
                 className={styles.mainContent}
-                onClick={isSidebarOpen ? closeSidebar : undefined} // 点击主内容关闭侧边栏
+                onClick={isSidebarOpen ? closeSidebar : undefined} // close sidebar when clicked note
             >
                 <Routes>
                     <Route path="/login" element={<Login />} />
@@ -122,7 +119,14 @@ const AppContent = () => {
                             </ProtectedRoute>
                         }
                     />
-
+                    {/* <Route
+                        path="/"
+                        element={
+                            <ProtectedRoute>
+                                
+                            </ProtectedRoute>
+                        }
+                    /> */}
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </div>
