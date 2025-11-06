@@ -1,5 +1,49 @@
 import Note from '../models/Note'
 import aiQueue from '../queues/aiQueue'
+import { sseManager } from '../utils/sseManager'
+
+/**
+ * GET /api/notes/:id/stream
+ * SSE Stream: real-time AI processing
+ */
+
+export const getNoteStream = async (req, res) => {
+    const { id } = req.params
+    const userId = req.userId
+
+    // vertify the note exists and belongs to the user
+    const note = await Note.findOne({ _id: id, userId })
+    if (!note) {
+        return res.status(404).json({ error: 'Note not found' })
+    }
+
+    //if the note is already processed, return it immediately
+    if (!note.isProcessing) {
+        return res.status(200).json({
+            title: note.title,
+            content: note.content,
+            keywords: note.keywords,
+        })
+    }
+
+    //set Server-Sent Events (SSE) headers
+    res.setHeader('Content-Type', 'text/event-stream')
+    res.setHeader('Cache-Control', 'no-cache')
+    res.setHeader('Connection', 'keep-alive')
+    res.flushHeaders()
+
+    //register the sse client connection for this note
+    sseManager.addClient(id, res)
+
+    //send and initial "start" event to the client
+    //so the frontend knows that the stream connection has been successfully established
+    res.write(`data: ${JSON.stringify({ type: 'start', noteId: id })}\n\n`)
+
+    // Clean up when the client closes the connection
+    req.on('close', () => {
+        sseManager.removeClient(id, res)
+    })
+}
 
 /**
  * CREATE: Create a new note from NewNoteCard
@@ -24,7 +68,10 @@ export const createNote = async (req, res) => {
         await note.save()
 
         // Trigger BullMQ job
-        await aiQueue.add('process-note', { noteId: note._id });
+        await aiQueue.add('process-note',
+            { noteId: note._id },
+            { jobId: `process-${note._id}`, removeOnComplete: true, removeOnFail: true }
+        );
 
         res.status(201).json({
             message: 'Note created. AI is organizing your content.',
