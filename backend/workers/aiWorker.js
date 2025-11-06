@@ -2,11 +2,12 @@ import { Worker } from "bullmq";
 import redis from '../config/redis.js'
 import Note from "../models/Note.js";
 import OpenAI from 'openai'
-import sseManager from '../utils/sseManager.js'
+import { sseManager } from '../utils/sseManager.js'
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-})
+// const openai = new OpenAI({
+//     //apiKey: process.env.OPENAI_API_KEY,
+//     apiKey: xxxxxx,
+// })
 
 //Worker: Process note with OpenAI
 

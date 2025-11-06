@@ -1,7 +1,6 @@
 import { Router } from "express"
 import {
     createNote,
-    getNoteStream,
     getNotesList,
     getNoteById,
     updateNote,

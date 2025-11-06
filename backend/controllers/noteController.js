@@ -1,6 +1,6 @@
-import Note from '../models/Note'
-import aiQueue from '../queues/aiQueue'
-import { sseManager } from '../utils/sseManager'
+import Note from '../models/Note.js'
+import aiQueue from '../queues/aiQueue.js'
+import { sseManager } from '../utils/sseManager.js'
 
 /**
  * GET /api/notes/:id/stream
