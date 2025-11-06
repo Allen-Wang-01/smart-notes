@@ -1,5 +1,5 @@
 import { Queue } from "bullmq";
-import redis from "../config/redis";
+import redis from "../config/redis.js";
 
 const aiQueue = new Queue('ai-processing', {
     connection: redis,

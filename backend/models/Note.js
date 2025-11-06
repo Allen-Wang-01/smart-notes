@@ -1,5 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose'
-import { use } from 'react'
+import mongoose from 'mongoose'
 
 const noteSchema = new mongoose.Schema(
     {
