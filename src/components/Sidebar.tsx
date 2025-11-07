@@ -111,7 +111,6 @@ const Sidebar = ({ closeSidebar, onNewNote }: SidebarProps) => {
                 </button>
             </div>
             <div className={styles.noteGroups}>
-
                 {isLoading ? (
                     <p className={styles.empty}>Loading notes...</p>
                 ) : sortedDates.length === 0 ? (

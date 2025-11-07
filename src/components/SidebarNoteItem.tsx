@@ -7,43 +7,33 @@ interface SidebarNoteItemProps {
         title: string;
         date: string;
         isProcessing?: boolean;
-        streamingContent?: string;
     }
 }
 
 const SidebarNoteItem = ({ note }: SidebarNoteItemProps) => {
-    const [displayText, setDisplayText] = useState<string | undefined>("")
-    const [showCursor, setShowCursor] = useState(true)
+    const [showCursor, setShowCursor] = useState(false)
 
+    //display flashing cursor only when processing
     useEffect(() => {
-        if (!note.isProcessing || !note.streamingContent) {
-            setDisplayText(note.title)
-            return;
-        }
-        let i = 0
-        const timer = setInterval(() => {
-            if (i <= (note.streamingContent?.length ?? 0)) {
-                setDisplayText(note.streamingContent?.slice(0, i))
-                i++
-            } else {
-                clearInterval(timer)
-            }
-        }, 30)
-        return () => clearInterval(timer)
-    }, [note.streamingContent, note.isProcessing])
-
-    useEffect(() => {
+        if (!note.isProcessing) return
         const blink = setInterval(() => setShowCursor((v) => !v), 530)
         return () => clearInterval(blink)
-    }, [])
+    }, [note.isProcessing])
+
+    const displayTitle = note.isProcessing
+        ? 'Processing...'
+        : note.title || 'Untitled'
 
     return (
-        <>
+        <div className={styles.noteItem}>
             <span className={styles.noteTitle}>
-                {displayText}
-                {note.isProcessing && showCursor && <span className={styles.cursor}>|</span>}
+                {displayTitle}
+                note.isProcessing && showCursor && <span className={styles.cursor}>|</span>
             </span>
-        </>
+            <span className={styles.noteDate}>
+                {new Date(note.date).toLocaleDateString()}
+            </span>
+        </div>
     )
 }
 
