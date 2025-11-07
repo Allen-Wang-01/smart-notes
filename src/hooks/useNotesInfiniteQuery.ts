@@ -25,7 +25,7 @@ export const useNotesInfiniteQuery = () => {
     return useInfiniteQuery<NotesPage>({
         queryKey: ['notes'],
         queryFn: async ({ pageParam = 1 }) => {
-            const res = await api.get('/api/notes', {
+            const res = await api.get('/notes', {
                 params: { page: pageParam, limit: 20 },
             });
             return res.data as NotesPage;
@@ -48,7 +48,7 @@ export const useAddNoteMutation = () => {
 
     return useMutation({
         mutationFn: async (newNote: Omit<NoteListItem, 'id' | 'date'>) => {
-            const res = await api.post('/api/notes', newNote);
+            const res = await api.post('/notes', newNote);
             return res.data as NoteListItem;
         },
 

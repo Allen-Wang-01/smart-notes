@@ -10,6 +10,7 @@ import ReportPage from './ReportPage';
 import Login from './Login';
 import Register from './Register';
 import ProtectedRoute from './ProtectedRoute';
+import NotePage from './NotePage';
 import styles from '../styles/Main.module.scss'
 
 
@@ -119,14 +120,14 @@ const AppContent = () => {
                             </ProtectedRoute>
                         }
                     />
-                    {/* <Route
-                        path="/"
+                    <Route
+                        path="/note/:id"
                         element={
                             <ProtectedRoute>
-                                
+                                <NotePage />
                             </ProtectedRoute>
                         }
-                    /> */}
+                    />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </div>

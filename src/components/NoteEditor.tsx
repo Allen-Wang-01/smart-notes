@@ -1,15 +1,18 @@
-import { useContext, useState, useEffect } from "react";
-import NoteContext from "../context/NoteContext";
 import toast from "react-hot-toast";
+import { useState } from "react";
 import styles from '../styles/NoteEditor.module.scss'
-import axios from "axios";
-import { getPromptForCategory } from "../utils/promptGenerator";
+import api from "../api/axios";
+import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNoteStream } from "../hooks/useNoteStream";
 
 interface Note {
     id: string;
     title: string;
     content: string;
-    date: string;
+    createdAt: string;
+    updatedAt: string;
+    isProcessing: boolean;
     category: "meeting" | "study" | "interview";
 }
 
@@ -20,76 +23,76 @@ interface NoteEditorProps {
 
 
 const NoteEditor = ({ note }: NoteEditorProps) => {
-    const noteContext = useContext(NoteContext)
-    if (!noteContext) return null
-    const { dispatch } = noteContext
-
     const [isEditing, setIsEditing] = useState(false)
-    const [editedTitle, setEditedTitle] = useState(note.title)
-    const [editedContent, setEditedContent] = useState(note.content)
-    const [editedCategory, setEditedCategory] = useState(note.category)
-    const [isLoading, setIsLoading] = useState(false)
-    const [contentUpdated, setContentUpdated] = useState(false) //label updated content
+    const [title, setTitle] = useState(note.title || "")
+    const [content, setContent] = useState(note.content || "")
+    const [category, setCategory] = useState(note.category)
+    const queryClient = useQueryClient()
+    const navigate = useNavigate()
 
-    // 修复 bug：监听 note 变化，更新状态
-    useEffect(() => {
-        setEditedTitle(note.title);
-        setEditedContent(note.content);
-        setEditedCategory(note.category);
-        setIsEditing(false); // 切换笔记时退出编辑模式
-        setContentUpdated(false); // 重置更新标记
-    }, [note]);
+    //only listen to stream event when note.isProcessing is true
+    const { content: streamContent, streaming } = useNoteStream(
+        note.isProcessing ? note.id : undefined
+    )
 
-
-    // update logic when regenerate content
-    const handleRegenerateContent = async () => {
-        if (!editedContent.trim()) {
-            toast.error("内容不能为空");
-            return;
+    //update note
+    const updateMutation = useMutation({
+        mutationFn: async () => {
+            if (!title) {
+                toast.error("title can't be empty")
+                return
+            } else if (!content) {
+                toast.error("content can't be empty")
+                return
+            }
+            const res = await api.patch(`/notes/${note.id}`, {
+                title,
+                content,
+                category,
+            })
+            return res.data.note
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notes'] })
         }
-        const backupContent = editedContent //save backup
-        setIsLoading(true);
-        setEditedContent("Regenerating content")
-        const toastId = toast.loading("Regenting content, Please wait for a moment")
-        try {
-            const prompt = getPromptForCategory(editedContent, editedCategory);
-            const response = await axios.post("http://localhost:3001/api/openai", {
-                prompt,
-                model: "gpt-3.5-turbo",
-                max_tokens: 400,
-            });
-            const regeneratedContent = response.data.choices[0].text.trim();
-            setEditedContent(regeneratedContent);
-            toast.success("内容已重新整理");
-        } catch (error) {
-            console.error("Open AI API error:", error);
-            setEditedContent(backupContent) // rollback to last edition
-            toast.error("regenerate failed, try again later", { id: toastId });
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    })
 
-    const handleSave = () => {
-        if (!editedContent.trim() || !editedTitle.trim()) {
-            toast.error("Title and Content can't be empty")
-            return
+    //delete note
+    const deleteMutation = useMutation({
+        mutationFn: async () => {
+            await api.delete(`/notes/${note.id}`)
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notes'] })
+            navigate('/')
         }
+    })
 
-        const updatedNote = {
-            ...note,
-            title: editedTitle,
-            content: editedContent,
-            category: editedCategory,
+    //regenerateNote 
+    const regenerateMutation = useMutation({
+        mutationFn: async () => {
+            await api.post(`/notes/${note.id}/regenerate`)
+            //set processing = true to trigger stream event
+            queryClient.setQueryData(["notes"], (old: any) => {
+                if (!old) return old
+                return {
+                    ...old,
+                    pages: old.pages.map((page: any) => ({
+                        ...page,
+                        notes: page.notes.map((n: any) => {
+                            n.id === note.id ? { ...n, isProcessing: true } : n
+                        })
+                    }))
+                }
+            })
         }
-        dispatch({ type: "UPDATE_NOTE", payload: updatedNote });
-        setIsEditing(false)
-        toast.success("successfully edited")
-    }
-    const handleDelete = () => {
-        dispatch({ type: "DELETE_NOTE", payload: note.id })
-        toast.success("successfully deleted", { duration: 4000 })
-    }
+    })
+
+    //disply according to the processing state
+    const displayContent = note.isProcessing
+        ? (streamContent || "").replace(/\n/g, "<br>")
+        : (content || "").replace(/\n/g, "<br>");
+
 
     return (
         <div className={styles.editorWrapper}>
@@ -97,23 +100,23 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
                 {isEditing ? (
                     <input
                         type="text"
-                        value={editedTitle}
-                        onChange={(e) => setEditedTitle(e.target.value)}
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
                         placeholder="Enter the title"
                         className={styles.titleInput}
                     />
                 ) : (
-                    <h2>{note.title}</h2>
+                    <h2>{title}</h2>
                 )}
                 <div className={styles.actions}>
                     {isEditing ? (
                         <>
-                            <button onClick={handleSave} disabled={isLoading}>
-                                保存
+                            <button onClick={() => updateMutation.mutate()} disabled={streaming || regenerateMutation.isPending}>
+                                Save
                             </button>
-                            <button onClick={() => setIsEditing(false)}>取消</button>
-                            <button onClick={handleRegenerateContent} disabled={isLoading}>
-                                {isLoading ? (
+                            <button onClick={() => setIsEditing((v) => !v)} disabled={streaming || regenerateMutation.isPending}>{isEditing ? "Cancel" : "Edit"}</button>
+                            <button onClick={() => regenerateMutation.mutate()} disabled={streaming || regenerateMutation.isPending}>
+                                {streaming ? (
                                     <svg
                                         className={styles.spinner}
                                         xmlns="http://www.w3.org/2000/svg"
@@ -128,13 +131,12 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
                                         <path d="M12 22c5.52 0 10-4.48 10-10h-2c0 4.41-3.59 8-8 8s-8-3.59-8-8 3.59-8 8-8V2C6.48 2 2 6.48 2 12s4.48 10 10 10z" />
                                     </svg>
                                 ) : (
-                                    "重新整理"
+                                    "Regenerate"
                                 )}
                             </button>
                         </>
                     ) : (<>
-                        <button onClick={handleDelete}>删除</button>
-                        <button onClick={() => setIsEditing(true)}>编辑</button>
+                        <button onClick={() => deleteMutation.mutate()} disabled={streaming || regenerateMutation.isPending}>Delete</button>
                     </>)}
                 </div>
             </div>
@@ -144,8 +146,8 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
                     {["meeting", "study", "interview"].map((cat) => (
                         <button
                             key={cat}
-                            className={`${styles.categoryButton} ${editedCategory === cat ? styles.active : ""}`}
-                            onClick={() => setEditedCategory(cat as "meeting" | "study" | "interview")}
+                            className={`${styles.categoryButton} ${category === cat ? styles.active : ""}`}
+                            onClick={() => setCategory(cat as "meeting" | "study" | "interview")}
                         >
                             {cat}
                         </button>
@@ -156,25 +158,28 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
             <div className={styles.content}>
                 {isEditing ? (
                     <textarea
-                        value={editedContent}
-                        onChange={(e) => setEditedContent(e.target.value)}
-                        className={`${styles.editableContent} ${contentUpdated ? styles.updated : ""}`}
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        className={`${styles.editableContent}`}
                         autoFocus
                         rows={10}
-                        disabled={isLoading}
+                        disabled={streaming}
                     />
                 ) : (
                     <div
                         className={styles.viewContent}
-                        dangerouslySetInnerHTML={{ __html: note.content.replace(/\n/g, "<br>") }}
+                        dangerouslySetInnerHTML={{ __html: displayContent, }}
                     />
                 )}
             </div>
 
 
             <div className={styles.meta}>
-                <span>创建时间: {new Date(note.date).toLocaleString()}</span>
-                <span>分类: {note.category}</span>
+                <span>createAt: {new Date(note.createdAt).toLocaleDateString()}</span>
+                {note.updatedAt && (
+                    <span>Last Updated: {new Date(note.updatedAt).toLocaleString()}</span>
+                )}
+                <span>category: {note.category}</span>
             </div>
         </div>
     )

@@ -64,7 +64,7 @@ const Register: React.FC = () => {
         setErrors({})
         if (validate()) {
             try {
-                const response = await api.post(`/api/auth/register`, {
+                const response = await api.post(`/auth/register`, {
                     username,
                     email,
                     password,

@@ -23,7 +23,7 @@ export const useCreateNoteMutation = () => {
 
     return useMutation({
         mutationFn: async (data: CreateNoteData): Promise<CreateNoteResponse> => {
-            const response = await api.post('/api/notes', data)
+            const response = await api.post('/notes', data)
             return response.data
         },
         onSuccess: (data) => {
