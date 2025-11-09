@@ -205,6 +205,74 @@ export const updateNote = async (req, res) => {
 }
 
 /**
+ * REGENERATE NOTE: POST /api/notes/:id/regenerate
+ *
+ * This endpoint triggers an AI reprocessing job for an existing note.
+ * It is used when the user requests to "regenerate" a note’s content.
+ *
+ * Workflow:
+ * 1. Validates that the note exists and belongs to the authenticated user.
+ * 2. Creates a backup of the current content (in case regeneration fails).
+ * 3. Resets the note’s title, content, and keywords, and marks it as processing.
+ * 4. Enqueues a new BullMQ job ("process-note") to have the AI regenerate the note.
+ * 5. Returns the updated note metadata with `isProcessing: true`.
+ *
+ * The frontend will automatically receive the regenerated content
+ * through the existing SSE (Server-Sent Events) stream endpoint:
+ *     GET /api/notes/:id/stream
+ *
+ * If AI regeneration fails, the system restores the note’s previous content
+ * from the backup to ensure no data loss.
+ */
+export const regenerateNote = async (req, res) => {
+    const { id } = req.params
+    const userId = req.userId
+
+    try {
+        const note = await Note.findOne({ _id: id, userId })
+        if (!note) {
+            return res.status(404).json({ error: "Note not found" })
+        }
+
+        //store previous content for fallback
+        note.previousContent = note.content || note.rawContent
+
+        //reset current state
+        note.isProcessing = true
+        note.title = "Regenerating..."
+        note.content = ""
+        note.keywords = []
+
+        await note.save()
+
+        //add a new job to the AI queue
+        await aiQueue.add(
+            "process-note",
+            { noteId: note._id },
+            {
+                jobId: `process-${note._id}-${Date.now()}`,
+                removeOnComplete: true,
+                removeOnFail: true,
+            }
+        )
+
+        res.status(200).json({
+            message: "Note regeneration started. AI is reprocessing content",
+            note: {
+                id: note._id,
+                title: note.title,
+                category: note.category,
+                date: note.updatedAt || note.createdAt,
+                isProcessing: note.isProcessing,
+            }
+        })
+    } catch (error) {
+        console.error("Regenerate note error: ", error)
+        res.status(500).json({ error: "Failed to regenerate note" })
+    }
+}
+
+/**
  * DELETE: Remove note from NoteEditor
  */
 

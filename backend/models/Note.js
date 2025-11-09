@@ -30,6 +30,10 @@ const noteSchema = new mongoose.Schema(
             enum: ['meeting', 'study', 'interview'],
             default: 'study',
         },
+        previousContent: {
+            type: String,
+            default: null, // used for rollback when regeneration fails
+        },
         isProcessing: {
             type: Boolean,
             default: true, // true when AI is working
