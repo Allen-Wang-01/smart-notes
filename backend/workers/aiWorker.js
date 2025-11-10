@@ -40,6 +40,7 @@ const worker = new Worker(
         let title = 'Untitled'
         let content = note.rawContent
         let keywords = []
+        let summary = null
 
         try {
             const jsonMatch = fullText.match(/\{[\s\S]*\}/)
@@ -47,9 +48,10 @@ const worker = new Worker(
                 const result = JSON.parse(jsonMatch[0])
                 title = result.title || title
                 content = result.content || content
-                keywords = result.keywords || []
+                keywords = Array.isArray(result.keywords) ? result.keywords : keywords
+                summary = typeof result.summary === 'string' ? result.summary.trim() : null
             } else {
-                console.warn(`No JSON object found in model output for note ${noteId}`)
+                console.warn(`No JSON in output for note ${noteId}`)
             }
 
             //success path
@@ -57,6 +59,7 @@ const worker = new Worker(
                 title,
                 content,
                 keywords,
+                summary,
                 isProcessing: false,
                 previousContent: undefined, //clear backup after success
             })
@@ -65,10 +68,10 @@ const worker = new Worker(
                 type: 'done',
                 data: { title, content },
             })
-            return { title, content, keywords }
+            return { title, content, keywords, summary }
 
         } catch (err) {
-            console.error('AI regeneration parse or save error:', err)
+            console.error('AI regeneration parse / save error:', err)
 
             //rollback path
             const rollbackNote = await Note.findById(noteId)
@@ -82,7 +85,7 @@ const worker = new Worker(
 
             sseManager.send(noteId, {
                 type: "error",
-                message: "AI regeneration failed, rolled back to previous content."
+                message: "AI regeneration failed - rolled back."
             })
             return null
         }

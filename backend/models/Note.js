@@ -25,6 +25,12 @@ const noteSchema = new mongoose.Schema(
             type: [String],
             default: [], //AI-extracted keywords
         },
+        summary: {
+            type: String,
+            default: null,
+            trim: true,
+            maxlength: 300, // Keep token-efficient for reports
+        },
         category: {
             type: String,
             enum: ['meeting', 'study', 'interview'],
@@ -49,5 +55,8 @@ noteSchema.index({ userId: 1, createdAt: -1 })
 
 //index for keyword stats
 noteSchema.index({ userId: 1, keywords: 1 })
+
+//index for summary + title lookup in report generation
+noteSchema.index({ userId: 1, summary: 1, title: 1 })
 
 export default mongoose.model('Note', noteSchema)

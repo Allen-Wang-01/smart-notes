@@ -1,3 +1,5 @@
+const SUMMARY_MAX_WORDS = 60;
+
 function buildPrompt(note) {
     const baseInstruction = `
 You are a professional note organizer. Transform the user's raw note into:
@@ -46,8 +48,9 @@ ${note.rawContent}
 Respond strictly in JSON format:
 {
   "title": "string",
-  "content": "markdown string",
-  "keywords": ["string"]
+  "content": "markdown string", // cleaned markdown
+  "keywords": ["string"]        // 3-6 lower-case tags
+  "summary": "..."         // 1-2 sentences, ≤ ${SUMMARY_MAX_WORDS} words
 }
 `;
 }
