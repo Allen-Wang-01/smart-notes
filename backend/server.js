@@ -5,6 +5,7 @@ import connectDB from './db.js'
 import authRoutes from './routes/auth.js'
 import cookieParser from 'cookie-parser';
 import noteRouter from './routes/note.js'
+import reportRoutes from './routes/reports.js'
 import './workers/aiWorker.js'
 dotenv.config();
 
@@ -20,6 +21,7 @@ connectDB()
 
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', noteRouter)
+app.use('/api/reports', reportRoutes)
 
 app.get('/', (req, res) => {
     res.send('Auth Backend is running')
