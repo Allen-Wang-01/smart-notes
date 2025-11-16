@@ -34,4 +34,10 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log('AI Worker started. Ready to process notes.');
+
+    // NOW safe to start background jobs
+    import('./jobs/generateWeeklyReports.js');
+    import('./jobs/generateMonthlyReports.js');
+    console.log('[Server] Cron jobs loaded: weekly (Sun 00:00), monthly (1st 00:05) JST');
 });
+
