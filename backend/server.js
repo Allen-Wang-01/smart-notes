@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import noteRouter from './routes/note.js'
 import reportRoutes from './routes/reports.js'
 import './workers/aiWorker.js'
+import './workers/reportWorker.js';
 dotenv.config();
 
 const app = express();
