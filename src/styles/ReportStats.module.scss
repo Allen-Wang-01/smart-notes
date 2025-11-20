@@ -1,0 +1,32 @@
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1.5rem;
+    margin: 3rem 0;
+}
+
+.statCard {
+    background: white;
+    padding: 1.8rem 1rem;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s;
+
+    &:hover {
+        transform: translateY(-4px);
+    }
+
+    h3 {
+        font-size: 2.4rem;
+        font-weight: 700;
+        color: #3498db;
+        margin: 0 0 0.5rem;
+    }
+
+    p {
+        color: #95a5a6;
+        font-size: 0.95rem;
+        margin: 0;
+    }
+}
