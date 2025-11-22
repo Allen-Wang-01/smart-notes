@@ -9,7 +9,7 @@
  */
 
 import corn from 'node-cron'
-import { queue } from '../queues/reportQueue'
+import { queue } from '../queues/reportQueue.js'
 import User from '../models/User.js'
 import { getPreviousPeriodKey, getWeeklyKey } from '../utils/period.js'
 

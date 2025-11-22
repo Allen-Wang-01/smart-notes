@@ -14,7 +14,6 @@ import Report from "../models/Report.js";
 import { queue } from '../queues/reportQueue.js'
 import OpenAI from "openai";
 import { sseManager } from "../utils/sseManager.js";
-import { getWeeklyKey, getMonthlyKey } from "../utils/period";
 
 // const openai = new OpenAI({
 //   apiKey: process.env.OPENAI_API_KEY,
@@ -51,7 +50,7 @@ const worker = new Worker(
             }
 
             // build stats
-            const stats = buildStats(notes, type)
+            const stats = buildStats(notes)
             const representativeSummaries = notes
                 .slice(0, 5)
                 .map((n) => `- "${n.summary}"`)
@@ -119,7 +118,7 @@ const worker = new Worker(
 // Helper Functions
 // =============================================================================
 
-function buildStats(notes, type) {
+function buildStats(notes) {
     const noteCount = notes.length
     const activeDays = new Set(notes.map((n) => n.createdAt.toISOString().slice(0, 10))).size
     const keywordMap = {}
@@ -169,3 +168,11 @@ ${summaries}
 }
 `.trim();
 }
+
+worker.on('completed', (job) => {
+    console.log(`[Report Worker] Successfully generated ${job.data.periodKey} for user ${job.data.userId}`);
+});
+
+worker.on('failed', (job, err) => {
+    console.error(`[Report Worker] Failed to generate ${job.data.periodKey} for user ${job.data.userId}:`, err.message);
+});

@@ -35,7 +35,7 @@ const reportSchema = new mongoose.Schema(
             default: [],
         },
         poeticLine: {
-            type: string,
+            type: String,
             default: null, //spotify-style poetic closing
         },
         stats: {
