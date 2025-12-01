@@ -1,58 +1,53 @@
 const SUMMARY_MAX_WORDS = 60;
 
 function buildPrompt(note) {
-    const baseInstruction = `
-You are a professional note organizer. Transform the user's raw note into:
-1. A clean, structured Markdown content
-2. A concise title (max 8 words)
-3. 3–6 keywords
-`;
+    const baseInstruction = `You are a professional note-taking assistant. Your task is to transform the raw note into structured, clean output.
 
-    const categoryPrompts = {
-        meeting: `
-This is a *meeting note*. Organize it into sections like:
-- **Summary**
-- **Decisions**
-- **Action Items**
-Use clear bullet points, concise sentences, and maintain professional tone.
-`,
-        study: `
-This is a *study note*. Structure it into sections like:
-- **Main Concepts**
-- **Key Insights**
-- **Examples or Applications**
-- **Summary**
-Emphasize clarity and educational readability.
-`,
-        interview: `
-This is an *interview note*. Structure it into sections like:
-- **Candidate Overview**
-- **Technical Skills**
-- **Behavioral Notes**
-- **Final Evaluation**
-Use concise, objective tone and emphasize key takeaways.
-`
+Requirements:
+- Generate a concise title (3–8 words max)
+- Produce clean Markdown content with proper headers and bullet points
+- Extract 3–6 lowercase keywords that best represent the note
+- Write a 1–2 sentence summary in ≤ ${SUMMARY_MAX_WORDS} words
+
+Output MUST be VALID JSON only. Do NOT include any explanations, markdown fences, or extra text.`;
+
+    const categoryInstructions = {
+        meeting: `This is a MEETING note. Use these sections when relevant:
+- ## Summary
+- ## Decisions
+- ## Action Items → format as "- [ ] Task @person (if mentioned)"
+Prioritize clarity, ownership, and deadlines.`,
+        study: `This is a STUDY note. Use these sections when relevant:
+- ## Main Concepts
+- ## Key Insights
+- ## Examples / Code Snippets
+- ## Summary
+Focus on learning clarity and retention.`,
+        interview: `This is an INTERVIEW note (you are the interviewer). Use these sections:
+- ## Candidate Overview
+- ## Technical Skills Assessment
+- ## Behavioral / Cultural Fit
+- ## Key Observations
+- ## Final Evaluation & Recommendation
+Be objective, specific, and professional.`
     };
 
-    const categoryHint = categoryPrompts[note.category] || "";
+    const specific = categoryInstructions[note.category] || categoryInstructions.meeting;
 
     return `
 ${baseInstruction}
-${categoryHint}
+${specific}
 
-Raw note:
-"""
-${note.rawContent}
-"""
+Raw note content:
+"""${note.rawContent.trim()}"""
 
-Respond strictly in JSON format:
+Respond with EXACTLY this JSON structure and nothing else:
 {
-  "title": "string",
-  "content": "markdown string", // cleaned markdown
-  "keywords": ["string"]        // 3-6 lower-case tags
-  "summary": "..."         // 1-2 sentences, ≤ ${SUMMARY_MAX_WORDS} words
-}
-`;
+  "title": "Brief descriptive title",
+  "content": "Full markdown content here (use \\n for line breaks if needed)",
+  "keywords": ["tag1", "tag2", "tag3", "tag4", "tag5"],
+  "summary": "One or two extremely concise sentences. Max ${SUMMARY_MAX_WORDS} words."
+}`;
 }
 
 export default buildPrompt;

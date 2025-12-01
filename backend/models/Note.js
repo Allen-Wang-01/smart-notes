@@ -40,6 +40,10 @@ const noteSchema = new mongoose.Schema(
             type: String,
             default: null, // used for rollback when regeneration fails
         },
+        previousTitle: {
+            type: String,
+            default: null, // used for rollback title when regeneration fails
+        },
         isProcessing: {
             type: Boolean,
             default: true, // true when AI is working
@@ -50,13 +54,16 @@ const noteSchema = new mongoose.Schema(
     }
 )
 
-//compund index: critical for weekly/monthly report queries
-noteSchema.index({ userId: 1, createdAt: -1 })
 
-//index for keyword stats
-noteSchema.index({ userId: 1, keywords: 1 })
+//index for report time period
+noteSchema.index({ userId: 1, updatedAt: -1 });
 
-//index for summary + title lookup in report generation
-noteSchema.index({ userId: 1, summary: 1, title: 1 })
+//index for category
+noteSchema.index({ userId: 1, category: 1, updatedAt: -1 })
+
+noteSchema.index(
+    { userId: 1, keywords: 1 },
+    { partialFilterExpression: { keywords: { $exists: true, $ne: [] } } }
+);
 
 export default mongoose.model('Note', noteSchema)

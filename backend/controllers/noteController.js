@@ -234,37 +234,27 @@ export const regenerateNote = async (req, res) => {
             return res.status(404).json({ error: "Note not found" })
         }
 
-        //store previous content for fallback
-        note.previousContent = note.content || note.rawContent
-
-        //reset current state
-        note.isProcessing = true
-        note.title = "Regenerating..."
-        note.content = ""
-        note.keywords = []
-
-        await note.save()
+        await Note.findByIdAndUpdate(id, {
+            isProcessing: true,
+            title: "Regenerating...",
+            content: "",
+            keywords: [],
+            summary: null,
+        })
 
         //add a new job to the AI queue
         await aiQueue.add(
             "process-note",
             { noteId: note._id },
             {
-                jobId: `process-${note._id}-${Date.now()}`,
+                jobId: `regenerate-${note._id}-${Date.now()}`,
                 removeOnComplete: true,
                 removeOnFail: true,
             }
         )
 
         res.status(200).json({
-            message: "Note regeneration started. AI is reprocessing content",
-            note: {
-                id: note._id,
-                title: note.title,
-                category: note.category,
-                date: note.updatedAt || note.createdAt,
-                isProcessing: note.isProcessing,
-            }
+            message: "Note regeneration started"
         })
     } catch (error) {
         console.error("Regenerate note error: ", error)
