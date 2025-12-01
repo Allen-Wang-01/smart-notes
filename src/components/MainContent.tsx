@@ -1,27 +1,18 @@
-import { useContext } from "react";
-import NoteContext from "../context/NoteContext";
-import NoteEditor from "./NoteEditor";
+import { useParams } from "react-router-dom";
+import NotePage from "./NotePage";
 import NewNoteCard from "./NewNoteCard";
 import styles from "../styles/MainContent.module.scss";
 
-interface MainContentProps {
-    selectedNoteId: string | null;
-    onNoteAdded: (noteId: string) => void;
-}
-
-const MainContent = ({ selectedNoteId, onNoteAdded }: MainContentProps) => {
-    const noteContext = useContext(NoteContext)
-    if (!noteContext) return null
-    const { state, dispatch } = noteContext
-    const selectedNote = state.notes.find((note) => note.id === selectedNoteId)
+const MainContent = () => {
+    const { id } = useParams<{ id?: string }>()
 
     return (
         <div className={styles.mainContent}>
-            {selectedNote ? (
-                <NoteEditor note={selectedNote} />
+            {id ? (
+                <NotePage />
             ) : (
                 <div className={styles.newNoteContainer}>
-                    <NewNoteCard dispatch={dispatch} onNoteAdded={onNoteAdded} />
+                    <NewNoteCard />
                 </div>
             )}
         </div>

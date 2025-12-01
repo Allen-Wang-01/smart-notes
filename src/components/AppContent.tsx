@@ -10,7 +10,6 @@ import ReportPage from './ReportPage';
 import Login from './Login';
 import Register from './Register';
 import ProtectedRoute from './ProtectedRoute';
-import NotePage from './NotePage';
 import styles from '../styles/Main.module.scss'
 
 
@@ -20,7 +19,6 @@ const AppContent = () => {
     const location = useLocation()
     const navigate = useNavigate()
     const { isAuthenticated } = useAppSelector((state) => state.auth)
-    const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
     useEffect(() => {
@@ -63,9 +61,6 @@ const AppContent = () => {
         location.pathname === '/login' ||
         location.pathname === '/register'
 
-    const handleNoteAdded = (noteId: string) => {
-        setSelectedNoteId(noteId); // jump to new note
-    };
 
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen)
@@ -90,7 +85,6 @@ const AppContent = () => {
                 <div className={`${styles.sidebar} ${isSidebarOpen ? styles.sidebarOpen : ''}`}>
                     <Sidebar
                         onNewNote={() => {
-                            setSelectedNoteId(null)
                             navigate('/')
                         }}
                         closeSidebar={closeSidebar}
@@ -108,7 +102,7 @@ const AppContent = () => {
                         path="/"
                         element={
                             <ProtectedRoute>
-                                <MainContent selectedNoteId={selectedNoteId} onNoteAdded={handleNoteAdded} />
+                                <MainContent />
                             </ProtectedRoute>
                         }
                     />
@@ -124,7 +118,7 @@ const AppContent = () => {
                         path="/note/:id"
                         element={
                             <ProtectedRoute>
-                                <NotePage />
+                                <MainContent />
                             </ProtectedRoute>
                         }
                     />

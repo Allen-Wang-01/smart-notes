@@ -4,11 +4,6 @@ import styles from '../styles/NewNoteCard.module.scss'
 import { useCreateNoteMutation } from "../hooks/useCreateNoteMutation";
 import TextareaAutosize from "react-textarea-autosize";
 
-
-// interface NewNoteCardProps {
-//     onNoteAdded: (noteId: string) => void; // 新增回调，用于跳转
-// }
-
 const NewNoteCard = () => {
     const [content, setContent] = useState("")
     const [category, setCategory] = useState<"meeting" | "study" | "interview">("meeting");
@@ -20,15 +15,16 @@ const NewNoteCard = () => {
             return;
         }
         mutation.mutate(
-            { rawContent: content },
             {
-                onSuccess: () => {
-                    setContent("")
-                    toast.success("Note created! AI is typing...")
-                }
+                rawContent: content.trim(),
+                category,
+            },
+            {
+                onSettled: () => {
+                    setContent("");
+                },
             }
         )
-
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {

@@ -1,249 +1,290 @@
 .editorWrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    padding: 20px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    max-width: 600px;
+    max-width: 900px;
     margin: 0 auto;
-    height: auto;
-    /* 自适应内容高度 */
-    min-height: 400px;
-    /* 最小高度 */
-
-    .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-
-        h2 {
-            margin: 0;
-            font-size: 1.5rem;
-        }
-
-        .titleInput {
-            width: 100%;
-            padding: 10px;
-            font-size: 1.2rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            outline: none;
-
-            &:focus {
-                border-color: #007bff;
-            }
-        }
-
-        .actions {
-            display: flex;
-            gap: 10px;
-
-            button {
-                padding: 8px 16px;
-                font-size: 1rem;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                transition: background-color 0.2s;
-
-                &:first-child {
-                    background: #dc3545;
-                    /* 删除按钮 */
-                    color: white;
-                }
-
-                &:last-child {
-                    background: #007bff;
-                    /* 编辑/保存按钮 */
-                    color: white;
-                }
-
-                &:hover {
-                    opacity: 0.9;
-                }
-
-                &:disabled {
-                    background: #ccc;
-                    cursor: not-allowed;
-                }
-
-                .spinner {
-                    animation: spin 1s linear infinite;
-                }
-            }
-        }
-    }
-
-    .categoryButtons {
-        display: flex;
-        gap: 10px;
-        overflow-x: auto;
-        padding-bottom: 5px;
-
-        .categoryButton {
-            padding: 8px 16px;
-            font-size: 1rem;
-            border: none;
-            border-radius: 4px;
-            background: #f4f4f4;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            min-width: 80px;
-            text-align: center;
-
-            &.active {
-                background: #007bff;
-                color: white;
-            }
-
-            &:hover {
-                background: #e0e0e0;
-            }
-        }
-    }
-
-    .content {
-        min-height: 200px;
-        max-height: 70vh;
-        overflow-y: auto;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-
-        .editableContent {
-            width: 100%;
-            padding: 10px;
-            font-size: 1rem;
-            line-height: 1.5;
-            border: 1px solid #007bff;
-            /* 蓝色边框，突出编辑状态 */
-            border-radius: 4px;
-            background: #f8f9fa;
-            /* 浅灰背景，区分查看模式 */
-            resize: vertical;
-            /* 仅允许垂直调整大小 */
-            outline: none;
-
-            &:focus {
-                border-color: #0056b3;
-                /* 聚焦时加深边框 */
-                box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
-            }
-
-            &:disabled {
-                background: #e9ecef;
-                cursor: not-allowed;
-            }
-
-            &.updated {
-                animation: highlight 0.5s ease;
-                /* 高亮动画 */
-            }
-        }
-
-        .viewContent {
-            font-size: 1rem;
-            line-height: 1.5;
-            white-space: pre-wrap;
-
-            /* 支持简单的加粗和列表样式 */
-            strong {
-                font-weight: bold;
-            }
-
-            ul {
-                list-style: disc;
-                margin-left: 20px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            padding: 8px;
-
-            .editableContent {
-                font-size: 0.9rem;
-                padding: 8px;
-            }
-
-            .viewContent {
-                font-size: 0.9rem;
-            }
-        }
-    }
-
-    .meta {
-        display: flex;
-        gap: 20px;
-        font-size: 0.9rem;
-        color: #666;
-    }
+    padding: 2rem 1.5rem;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
     @media (max-width: 768px) {
-        padding: 15px;
-        max-width: 100%;
-        min-height: 300px;
+        padding: 1.5rem 1rem;
+    }
+}
 
-        .header {
-            flex-direction: column;
-            align-items: flex-start;
+/* Header: title + action buttons */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
 
-            h2 {
-                font-size: 1.3rem;
-            }
+    @media (max-width: 640px) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
 
-            .titleInput {
-                font-size: 1.1rem;
-                padding: 8px;
-            }
+/* Title in view mode */
+.title {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    word-break: break-word;
+}
 
-            .actions {
-                button {
-                    padding: 10px 14px;
-                    font-size: 0.9rem;
-                }
+/* Blinking cursor during streaming */
+.cursor {
+    display: inline-block;
+    width: 3px;
+    height: 1.2em;
+    background: #3b82f6;
+    animation: blink 1s steps(2, start) infinite;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+@keyframes blink {
+    to {
+        visibility: hidden;
+    }
+}
+
+/* Title input in edit mode */
+.titleInput {
+    font-size: 2rem;
+    font-weight: 700;
+    padding: 0.5rem 0.75rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 600px;
+    transition: border 0.2s;
+
+    &:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+}
+
+/* Action buttons */
+.actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+
+    button {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Primary actions */
+        &:nth-child(1) {
+            /* Save / Edit */
+            background: #3b82f6;
+            color: white;
+
+            &:hover:not(:disabled) {
+                background: #2563eb;
             }
         }
 
-        .categoryButtons {
-            .categoryButton {
-                padding: 10px 14px;
-                font-size: 0.9rem;
-                min-width: 70px;
+        /* Regenerate */
+        &:nth-child(2) {
+            background: #10b981;
+            color: white;
+
+            &:hover:not(:disabled) {
+                background: #059669;
             }
         }
 
-        .content {
-            font-size: 0.9rem;
-            padding: 8px;
+        /* Delete */
+        &:nth-child(3) {
+            background: #ef4444;
+            color: white;
+
+            &:hover:not(:disabled) {
+                background: #dc2626;
+            }
         }
 
-        .meta {
-            font-size: 0.85rem;
+        /* Cancel */
+        &:nth-child(2):not(:nth-child(3)) {
+            background: #6b7280;
+            color: white;
+
+            &:hover:not(:disabled) {
+                background: #4b5563;
+            }
         }
     }
+}
 
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
+/* Spinner icon during streaming */
+.spinner {
+    animation: spin 1s linear infinite;
+}
 
-        100% {
-            transform: rotate(360deg);
-        }
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
     }
 
-    @keyframes highlight {
-        0% {
-            border-color: #28a745;
-            box-shadow: 0 0 8px rgba(40, 167, 69, 0.5);
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Category selector (edit mode only) */
+.categoryButtons {
+    display: flex;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+    flex-wrap: wrap;
+}
+
+.categoryButton {
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &.active {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    &:hover:not(.active) {
+        background: #f3f4f6;
+    }
+}
+
+/* Content area */
+.content {
+    margin: 2rem 0;
+    min-height: 400px;
+}
+
+/* View mode: Markdown content */
+.viewContent {
+    font-size: 1.125rem;
+    line-height: 1.8;
+    color: #374151;
+
+    /* React-Markdown default styles enhancement */
+    :global(h1),
+    :global(h2),
+    :global(h3) {
+        margin: 1.5em 0 0.8em;
+        font-weight: 600;
+    }
+
+    :global(p) {
+        margin: 1em 0;
+    }
+
+    :global(ul),
+    :global(ol) {
+        padding-left: 1.5em;
+        margin: 1em 0;
+    }
+
+    :global(code) {
+        background: #f3f4f6;
+        padding: 0.2em 0.4em;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+
+    :global(pre) {
+        background: #1f2937;
+        color: #e5e7eb;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+    }
+
+    :global(table) {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.5em 0;
+
+        th,
+        td {
+            border: 1px solid #d1d5db;
+            padding: 0.75rem;
+            text-align: left;
         }
 
-        100% {
-            border-color: #007bff;
-            box-shadow: none;
+        th {
+            background: #f9fafb;
         }
+    }
+}
+
+/* Edit mode: textarea */
+.editableContent {
+    width: 100%;
+    min-height: 500px;
+    padding: 1.5rem;
+    font-size: 1.1rem;
+    line-height: 1.7;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    resize: vertical;
+    font-family: inherit;
+
+    &:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    &:disabled {
+        background: #f9fafb;
+        cursor: not-allowed;
+    }
+}
+
+/* Meta information at bottom */
+.meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .title {
+        font-size: 1.75rem;
+    }
+
+    .titleInput {
+        font-size: 1.5rem;
+    }
+
+    .actions button {
+        padding: 0.6rem 0.9rem;
+        font-size: 0.9rem;
     }
 }

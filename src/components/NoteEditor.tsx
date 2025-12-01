@@ -1,12 +1,14 @@
 import toast from "react-hot-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styles from '../styles/NoteEditor.module.scss'
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNoteStream } from "../hooks/useNoteStream";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
-interface Note {
+export interface Note {
     id: string;
     title: string;
     content: string;
@@ -20,41 +22,44 @@ interface NoteEditorProps {
     note: Note;
 }
 
-
-
 const NoteEditor = ({ note }: NoteEditorProps) => {
     const [isEditing, setIsEditing] = useState(false)
-    const [title, setTitle] = useState(note.title || "")
-    const [content, setContent] = useState(note.content || "")
-    const [category, setCategory] = useState(note.category)
+    const [editTitle, setEditTitle] = useState(note.title || "Untitled")
+    const [editContent, setEditContent] = useState(note.content || "")
+    const [editCategory, setEditCategory] = useState(note.category)
     const queryClient = useQueryClient()
     const navigate = useNavigate()
 
     //only listen to stream event when note.isProcessing is true
-    const { content: streamContent, streaming } = useNoteStream(
-        note.isProcessing ? note.id : undefined
-    )
+    const stream = useNoteStream(note.isProcessing ? note.id : undefined)
+    const { title: streamTitle, content: streamContent, isStreaming, error } = stream
+
+    useEffect(() => {
+        if (!isEditing && !note.isProcessing && streamTitle && streamContent) {
+            setEditTitle(streamTitle);
+            setEditContent(streamContent);
+        }
+    }, [streamTitle, streamContent, note.isProcessing, isEditing]);
 
     //update note
     const updateMutation = useMutation({
         mutationFn: async () => {
-            if (!title) {
-                toast.error("title can't be empty")
-                return
-            } else if (!content) {
-                toast.error("content can't be empty")
-                return
-            }
+            if (!editTitle.trim()) throw new Error("Title cannot be empty")
+            if (!editContent.trim()) throw new Error("Content cannot be empty")
             const res = await api.patch(`/notes/${note.id}`, {
-                title,
-                content,
-                category,
-            })
-            return res.data.note
+                title: editTitle.trim(),
+                content: editContent.trim(),
+                category: editCategory,
+            });
+            return res.data.note;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['notes'] })
-        }
+            queryClient.invalidateQueries({ queryKey: ["note", note.id] })
+            toast.success("Saved successfully");
+            setIsEditing(false);
+        },
+        onError: () => toast.error("Save failed")
     })
 
     //delete note
@@ -64,34 +69,22 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['notes'] })
+            toast.success("Note deleted")
             navigate('/')
         }
     })
 
     //regenerateNote 
     const regenerateMutation = useMutation({
-        mutationFn: async () => {
-            await api.post(`/notes/${note.id}/regenerate`)
-            //set processing = true to trigger stream event
-            queryClient.setQueryData(["notes"], (old: any) => {
-                if (!old) return old
-                return {
-                    ...old,
-                    pages: old.pages.map((page: any) => ({
-                        ...page,
-                        notes: page.notes.map((n: any) => {
-                            n.id === note.id ? { ...n, isProcessing: true } : n
-                        })
-                    }))
-                }
-            })
-        }
+        mutationFn: () => api.post(`/notes/${note.id}/regenerate`),
+        onSuccess: () => {
+            toast.success("Regenerating...")
+        },
     })
 
     //disply according to the processing state
-    const displayContent = note.isProcessing
-        ? (streamContent || "").replace(/\n/g, "<br>")
-        : (content || "").replace(/\n/g, "<br>");
+    const displayTitle = isEditing ? editTitle : (streamTitle || note.title || "Untitled");
+    const displayContent = isEditing ? editContent : (streamContent || note.content || "");
 
 
     return (
@@ -100,23 +93,26 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
                 {isEditing ? (
                     <input
                         type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
                         placeholder="Enter the title"
                         className={styles.titleInput}
+                        autoFocus
                     />
                 ) : (
-                    <h2>{title}</h2>
+                    <h2>{displayTitle}
+                        {isStreaming && <span className={styles.cursor}>|</span>}
+                    </h2>
                 )}
                 <div className={styles.actions}>
                     {isEditing ? (
                         <>
-                            <button onClick={() => updateMutation.mutate()} disabled={streaming || regenerateMutation.isPending}>
+                            <button onClick={() => updateMutation.mutate()} disabled={isStreaming || regenerateMutation.isPending}>
                                 Save
                             </button>
-                            <button onClick={() => setIsEditing((v) => !v)} disabled={streaming || regenerateMutation.isPending}>{isEditing ? "Cancel" : "Edit"}</button>
-                            <button onClick={() => regenerateMutation.mutate()} disabled={streaming || regenerateMutation.isPending}>
-                                {streaming ? (
+                            <button onClick={() => setIsEditing((v) => !v)} disabled={isStreaming || regenerateMutation.isPending}>{isEditing ? "Cancel" : "Edit"}</button>
+                            <button onClick={() => regenerateMutation.mutate()} disabled={isStreaming || regenerateMutation.isPending}>
+                                {isStreaming ? (
                                     <svg
                                         className={styles.spinner}
                                         xmlns="http://www.w3.org/2000/svg"
@@ -136,7 +132,7 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
                             </button>
                         </>
                     ) : (<>
-                        <button onClick={() => deleteMutation.mutate()} disabled={streaming || regenerateMutation.isPending}>Delete</button>
+                        <button onClick={() => deleteMutation.mutate()} disabled={isStreaming || regenerateMutation.isPending}>Delete</button>
                     </>)}
                 </div>
             </div>
@@ -146,8 +142,8 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
                     {["meeting", "study", "interview"].map((cat) => (
                         <button
                             key={cat}
-                            className={`${styles.categoryButton} ${category === cat ? styles.active : ""}`}
-                            onClick={() => setCategory(cat as "meeting" | "study" | "interview")}
+                            className={`${styles.categoryButton} ${editCategory === cat ? styles.active : ""}`}
+                            onClick={() => setEditCategory(cat as "meeting" | "study" | "interview")}
                         >
                             {cat}
                         </button>
@@ -158,18 +154,23 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
             <div className={styles.content}>
                 {isEditing ? (
                     <textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
                         className={`${styles.editableContent}`}
                         autoFocus
-                        rows={10}
-                        disabled={streaming}
+                        rows={20}
+                        disabled={isStreaming}
                     />
                 ) : (
-                    <div
-                        className={styles.viewContent}
-                        dangerouslySetInnerHTML={{ __html: displayContent, }}
-                    />
+                    <div className={styles.viewContent}>
+                        {error ? (
+                            <p className="text-red-500">{error}</p>
+                        ) : (
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {displayContent}
+                            </ReactMarkdown>
+                        )}
+                    </div>
                 )}
             </div>
 
