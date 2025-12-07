@@ -1,53 +1,99 @@
 const SUMMARY_MAX_WORDS = 60;
 
-function buildPrompt(note) {
-    const baseInstruction = `You are a professional note-taking assistant. Your task is to transform the raw note into structured, clean output.
-
-Requirements:
-- Generate a concise title (3–8 words max)
-- Produce clean Markdown content with proper headers and bullet points
-- Extract 3–6 lowercase keywords that best represent the note
-- Write a 1–2 sentence summary in ≤ ${SUMMARY_MAX_WORDS} words
-
-Output MUST be VALID JSON only. Do NOT include any explanations, markdown fences, or extra text.`;
-
-    const categoryInstructions = {
-        meeting: `This is a MEETING note. Use these sections when relevant:
+const CATEGORY_INSTRUCTIONS = {
+    meeting: `
+Meeting note — Organize using clear sections:
 - ## Summary
 - ## Decisions
-- ## Action Items → format as "- [ ] Task @person (if mentioned)"
-Prioritize clarity, ownership, and deadlines.`,
-        study: `This is a STUDY note. Use these sections when relevant:
+- ## Action Items
+Format action items as:
+- [ ] Task @person (deadline)
+Focus on clarity and next steps.
+    `,
+    study: `
+Study note — Organize using:
 - ## Main Concepts
 - ## Key Insights
-- ## Examples / Code Snippets
+- ## Examples or Code Snippets
 - ## Summary
-Focus on learning clarity and retention.`,
-        interview: `This is an INTERVIEW note (you are the interviewer). Use these sections:
+Prioritize clarity and logical grouping.
+    `,
+    interview: `
+Interview note — Use:
 - ## Candidate Overview
 - ## Technical Skills Assessment
 - ## Behavioral / Cultural Fit
 - ## Key Observations
 - ## Final Evaluation & Recommendation
-Be objective, specific, and professional.`
-    };
+Be objective and professional.
+    `,
+};
 
-    const specific = categoryInstructions[note.category] || categoryInstructions.meeting;
+function buildPrompt(note) {
+    const categoryInstruction =
+        CATEGORY_INSTRUCTIONS[note.category] ||
+        CATEGORY_INSTRUCTIONS["meeting"]; // fallback
 
     return `
-${baseInstruction}
-${specific}
+You are a professional note-taking assistant. Your task is to read the raw note and produce:
 
-Raw note content:
+1) A human-readable Markdown version of the content (streamed gradually).
+2) A final structured JSON object (NOT streamed) containing the title, content, keywords, and summary.
+
+Follow this **two-phase output protocol strictly**:
+
+==========================
+PHASE 1 — STREAMING CONTENT
+==========================
+Begin by outputting:
+
+<CONTENT>
+
+Inside <CONTENT>, write ONLY the Markdown version of the organized note.
+- Stream it gradually in natural order.
+- NO JSON in this section.
+- NO explanations, no commentary.
+- Use headers, bullet points, structure, clarity.
+
+Close this section exactly with:
+
+</CONTENT>
+
+==========================
+PHASE 2 — FINAL JSON OBJECT
+==========================
+After PHASE 1 is fully completed, output:
+
+<FINAL_JSON>
+{
+  "title": "3–8 word concise title",
+  "content": "The complete markdown content from PHASE 1 (escaped as needed)",
+  "keywords": ["3 to 6 lowercase keywords"],
+  "summary": "1–2 very concise sentences, max ${SUMMARY_MAX_WORDS} words."
+}
+</FINAL_JSON>
+
+Rules:
+- Start streaming the output immediately.
+- Do NOT wait to plan, summarize, or generate the final JSON before starting.
+- Your FIRST token should belong to the <CONTENT> section.
+- Do NOT hold the response to think — stream as you generate.
+- The JSON object MUST be valid JSON.
+- Do not output anything outside <FINAL_JSON>.
+- No markdown, no commentary, no extra words.
+
+==========================
+CATEGORY-SPECIFIC INSTRUCTION
+==========================
+${categoryInstruction.trim()}
+
+==========================
+RAW NOTE CONTENT
+==========================
 """${note.rawContent.trim()}"""
 
-Respond with EXACTLY this JSON structure and nothing else:
-{
-  "title": "Brief descriptive title",
-  "content": "Full markdown content here (use \\n for line breaks if needed)",
-  "keywords": ["tag1", "tag2", "tag3", "tag4", "tag5"],
-  "summary": "One or two extremely concise sentences. Max ${SUMMARY_MAX_WORDS} words."
-}`;
+Begin now.
+    `.trim();
 }
 
 export default buildPrompt;
