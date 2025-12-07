@@ -4,7 +4,6 @@ import styles from '../styles/NoteEditor.module.scss'
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNoteStream } from "../hooks/useNoteStream";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -12,34 +11,35 @@ export interface Note {
     id: string;
     title: string;
     content: string;
-    createdAt: string;
-    updatedAt: string;
-    isProcessing: boolean;
+    created: string;
+    updated: string;
+    status: "pending" | "processing" | "retrying" | "completed" | "failed";
     category: "meeting" | "study" | "interview";
 }
 
 interface NoteEditorProps {
     note: Note;
+    isStreaming: boolean;
+    streamError: string | null;
 }
 
-const NoteEditor = ({ note }: NoteEditorProps) => {
-    const [isEditing, setIsEditing] = useState(false)
-    const [editTitle, setEditTitle] = useState(note.title || "Untitled")
-    const [editContent, setEditContent] = useState(note.content || "")
-    const [editCategory, setEditCategory] = useState(note.category)
+const NoteEditor = ({ note, isStreaming, streamError }: NoteEditorProps) => {
     const queryClient = useQueryClient()
     const navigate = useNavigate()
+    const [isEditing, setIsEditing] = useState(false);
+    const [editTitle, setEditTitle] = useState(note.title);
+    const [editContent, setEditContent] = useState(note.content);
+    const [editCategory, setEditCategory] = useState(note.category);
 
-    //only listen to stream event when note.isProcessing is true
-    const stream = useNoteStream(note.isProcessing ? note.id : undefined)
-    const { title: streamTitle, content: streamContent, isStreaming, error } = stream
-
+    // When database note updates (after refetch), sync into editor
     useEffect(() => {
-        if (!isEditing && !note.isProcessing && streamTitle && streamContent) {
-            setEditTitle(streamTitle);
-            setEditContent(streamContent);
+        if (!isEditing) {
+            setEditTitle(note.title);
+            setEditContent(note.content);
+            setEditCategory(note.category);
         }
-    }, [streamTitle, streamContent, note.isProcessing, isEditing]);
+    }, [note, isEditing]);
+
 
     //update note
     const updateMutation = useMutation({
@@ -79,13 +79,18 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
         mutationFn: () => api.post(`/notes/${note.id}/regenerate`),
         onSuccess: () => {
             toast.success("Regenerating...")
+            // re-enter same page → shouldStream=true
+            navigate(`/note/${note.id}`, {
+                state: { shouldStream: true },
+                replace: true,
+            });
         },
+        onError: () => toast.error("Failed to regenerate"),
     })
 
-    //disply according to the processing state
-    const displayTitle = isEditing ? editTitle : (streamTitle || note.title || "Untitled");
-    const displayContent = isEditing ? editContent : (streamContent || note.content || "");
-
+    const disableEditing = isStreaming || updateMutation.isPending;
+    const disableRegenerate =
+        isEditing || isStreaming || regenerateMutation.isPending;
 
     return (
         <div className={styles.editorWrapper}>
@@ -97,45 +102,59 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
                         onChange={(e) => setEditTitle(e.target.value)}
                         placeholder="Enter the title"
                         className={styles.titleInput}
+                        disabled={disableEditing}
                         autoFocus
                     />
                 ) : (
-                    <h2>{displayTitle}
+                    <h2>{note.title}
                         {isStreaming && <span className={styles.cursor}>|</span>}
                     </h2>
                 )}
                 <div className={styles.actions}>
-                    {isEditing ? (
+                    {!isEditing ? (
                         <>
-                            <button onClick={() => updateMutation.mutate()} disabled={isStreaming || regenerateMutation.isPending}>
-                                Save
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                disabled={disableEditing}
+                            >
+                                Edit
                             </button>
-                            <button onClick={() => setIsEditing((v) => !v)} disabled={isStreaming || regenerateMutation.isPending}>{isEditing ? "Cancel" : "Edit"}</button>
-                            <button onClick={() => regenerateMutation.mutate()} disabled={isStreaming || regenerateMutation.isPending}>
-                                {isStreaming ? (
-                                    <svg
-                                        className={styles.spinner}
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 24 24"
-                                        width="16"
-                                        height="16"
-                                    >
-                                        <path
-                                            d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm0-18c4.41 0 8 3.59 8 8s-3.59 8-8 8-8-3.59-8-8 3.59-8 8-8z"
-                                            opacity=".3"
-                                        />
-                                        <path d="M12 22c5.52 0 10-4.48 10-10h-2c0 4.41-3.59 8-8 8s-8-3.59-8-8 3.59-8 8-8V2C6.48 2 2 6.48 2 12s4.48 10 10 10z" />
-                                    </svg>
-                                ) : (
-                                    "Regenerate"
-                                )}
+                            <button
+                                onClick={() => regenerateMutation.mutate()}
+                                disabled={disableRegenerate}
+                            >
+                                {regenerateMutation.isPending
+                                    ? "Regenerating..."
+                                    : "Regenerate"}
+                            </button>
+                            <button
+                                onClick={() => deleteMutation.mutate()}
+                                disabled={disableRegenerate}
+                            >
+                                Delete
                             </button>
                         </>
-                    ) : (<>
-                        <button onClick={() => deleteMutation.mutate()} disabled={isStreaming || regenerateMutation.isPending}>Delete</button>
-                    </>)}
+                    ) : (
+                        <>
+                            <button
+                                onClick={() => updateMutation.mutate()}
+                                disabled={disableEditing}
+                            >
+                                Save
+                            </button>
+                            <button
+                                onClick={() => setIsEditing(false)}
+                                disabled={disableEditing}
+                            >
+                                Cancel
+                            </button>
+                        </>
+                    )}
+
                 </div>
             </div>
+
+            {/* Category selector */}
 
             {isEditing && (
                 <div className={styles.categoryButtons}>
@@ -144,6 +163,7 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
                             key={cat}
                             className={`${styles.categoryButton} ${editCategory === cat ? styles.active : ""}`}
                             onClick={() => setEditCategory(cat as "meeting" | "study" | "interview")}
+                            disabled={disableEditing}
                         >
                             {cat}
                         </button>
@@ -151,23 +171,29 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
                 </div>
             )}
 
+            {/* Content */}
             <div className={styles.content}>
                 {isEditing ? (
                     <textarea
                         value={editContent}
                         onChange={(e) => setEditContent(e.target.value)}
-                        className={`${styles.editableContent}`}
+                        className={styles.editableContent}
                         autoFocus
                         rows={20}
-                        disabled={isStreaming}
+                        disabled={disableEditing}
                     />
                 ) : (
                     <div className={styles.viewContent}>
-                        {error ? (
-                            <p className="text-red-500">{error}</p>
+                        {isStreaming && (
+                            <div className={styles.generating}>
+                                <span className={styles.pulse}>✦ AI is generating your note...</span>
+                            </div>
+                        )}
+                        {streamError ? (
+                            <p className="text-red-500">{streamError}</p>
                         ) : (
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {displayContent}
+                                {note.content}
                             </ReactMarkdown>
                         )}
                     </div>
@@ -176,9 +202,9 @@ const NoteEditor = ({ note }: NoteEditorProps) => {
 
 
             <div className={styles.meta}>
-                <span>createAt: {new Date(note.createdAt).toLocaleDateString()}</span>
-                {note.updatedAt && (
-                    <span>Last Updated: {new Date(note.updatedAt).toLocaleString()}</span>
+                <span>createAt: {new Date(note.created).toLocaleDateString()}</span>
+                {note.updated && (
+                    <span>Last Updated: {new Date(note.updated).toLocaleString()}</span>
                 )}
                 <span>category: {note.category}</span>
             </div>

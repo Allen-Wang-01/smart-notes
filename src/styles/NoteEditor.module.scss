@@ -235,6 +235,32 @@
             background: #f9fafb;
         }
     }
+
+    .generating {
+        font-size: 0.875rem; // text-sm
+        color: #6b7280; // text-gray-500
+        display: flex; // flex
+        align-items: center; // items-center
+        gap: 0.25rem; // gap-1
+        margin-bottom: 0.5rem; // mb-2
+    }
+
+    .pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; // animate-pulse
+    }
+
+    @keyframes pulse {
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: .5;
+        }
+    }
+
 }
 
 /* Edit mode: textarea */
