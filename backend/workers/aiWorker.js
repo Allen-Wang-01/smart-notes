@@ -5,9 +5,10 @@ import buildPrompt from '../utils/buildPrompt.js'
 import OpenAI from 'openai'
 import { sseManager } from '../utils/sseManager.js'
 import dotenv from 'dotenv'
+import { writeLog } from "../utils/log.js";
+import { decodeDoubleEscapedMarkdown } from "../utils/decodeContent.js";
 dotenv.config();
 const client = new OpenAI()
-
 
 /**
  * BullMQ worker for AI note processing using OpenAI's Responses API
@@ -22,24 +23,60 @@ const worker = new Worker(
     'ai-processing',
     async (job) => {
         const { noteId } = job.data
-        //Fetch current note
+        const startTime = Date.now()
+
+        writeLog(noteId, `JOB START at ${startTime}`)
+
+        // 1. Fetch note
+        const loadStart = Date.now()
         const note = await Note.findById(noteId)
-        if (!note || !note.isProcessing) {
-            console.log(`Note ${noteId} already processed or cancelled`)
+        writeLog(noteId, `Loaded note in ${Date.now() - loadStart}ms`);
+
+        if (!note) {
+            console.log(`Note ${noteId} does not exist, skipping`)
             return
         }
-        //generate prompt
-        const prompt = buildPrompt(note);
 
-        //backup current content for rollback
+        if (note.status === "completed") {
+            console.log(`Note ${noteId} already completed`);
+            return;
+        }
+
+        //2. Mark as processing (idempotent)
+        if (note.status !== "processing") {
+            await Note.findByIdAndUpdate(noteId, {
+                status: "processing",
+            });
+            note.status = "processing";
+        }
+
+
+        // 3. Backup user input
         await Note.findByIdAndUpdate(noteId, {
             previousContent: note.content || note.rawContent,
             previousTitle: note.title || "Untitled"
         })
 
-        let fullResponse = ""
+        writeLog(noteId, "Previous content/title backed up")
 
+        // 4. Build prompt
+        const prompt = buildPrompt(note);
+        writeLog(noteId, `Prompt built. Length = ${prompt.length}`)
+
+        // --- STREAM CONTROL ---
+        let streamedContent = "";  //<CONTENT> part
+        let fullStreamText = "";  // all output includes FINAL_JSON
+        let finalJsonString = null;
+
+        // TIMING
+        let apiStart = null;
+        let firstToken = null;
+
+        // 5. Call OpenAI with streaming
         try {
+            // OpenAI call
+            writeLog(noteId, "Calling OpenAI...");
+            apiStart = Date.now();
             // Use Responses API with streaming and JSON
             const stream = await client.responses.create({
                 model: 'gpt-5-nano',
@@ -51,37 +88,139 @@ const worker = new Worker(
                     },
                 ],
                 stream: true,
-                response_format: { type: "json_object" }, //Ensures pure JSON output
-                temperature: 0.3,
-                max_tokens: 3500,
-                timeout: 60_000, //60 seconds timeout
+                store: false,
             })
+
+            writeLog(
+                noteId,
+                `OpenAI request accepted in ${Date.now() - apiStart}ms`
+            );
 
             for await (const chunk of stream) {
-                const delta = chunk.output?.[0]?.delta?.content || ""
-                fullResponse += delta
-                sseManager.send(noteId, { type: "chunk", content: delta })
+                const now = Date.now();
+                writeLog(
+                    noteId,
+                    `CHUNK: ${chunk.type} @ ${now} (${now - apiStart}ms after request)`
+                );
+
+                // First token
+                if (!firstToken && chunk.type === "response.output_text.delta") {
+                    firstToken = now;
+                    writeLog(
+                        noteId,
+                        `FIRST TOKEN after ${firstToken - apiStart}ms`
+                    );
+                }
+
+
+                let incoming = "";
+
+
+                // ---- 1. delta chunk: response.output_text.delta ----
+
+                if (chunk.type === "response.output_text.delta") {
+                    incoming = chunk.delta || "";
+                    fullStreamText += incoming;
+
+
+                    if (
+                        fullStreamText.includes("<CONTENT>") &&
+                        !fullStreamText.includes("<FINAL_JSON>")
+                    ) {
+                        const afterStart = fullStreamText.split("<CONTENT>")[1] || "";
+                        const currentContent =
+                            afterStart.split("</CONTENT>")[0] || "";
+
+                        streamedContent = currentContent;
+
+                        sseManager.send(noteId, {
+                            type: "chunk",
+                            content: incoming,
+                        });
+                    }
+
+                    continue;
+                }
+
+
+                if (chunk.type === "response.output_text.done") {
+                    incoming = chunk.text || "";
+                    fullStreamText += incoming;
+
+
+                    const afterContentTag = fullStreamText.split("<CONTENT>")[1] || "";
+                    streamedContent = afterContentTag.split("</CONTENT>")[0] || "";
+
+                    const afterJsonTag = fullStreamText.split("<FINAL_JSON>")[1] || "";
+                    finalJsonString = afterJsonTag.split("</FINAL_JSON>")[0]?.trim() || "";
+
+                    writeLog(
+                        noteId,
+                        `STREAM DONE. Total stream chars = ${fullStreamText.length}`
+                    );
+
+                    break;
+                }
             }
 
-            const parsed = JSON.parse(fullResponse)
+            // 6. Parse final JSON safely
+            let parsed = null;
 
-            // successed remove backup
+            if (finalJsonString) {
+                try {
+                    parsed = JSON.parse(finalJsonString);
+                } catch (e) {
+
+                    const fixed = finalJsonString
+                        .replace(/\\n/g, "\n")
+                        .replace(/\\"/g, '"');
+
+                    parsed = JSON.parse(fixed);
+                }
+            } else {
+                parsed = {
+                    title: "Untitled",
+                    summary: null,
+                    keywords: [],
+                    content: streamedContent,
+                };
+            }
+
+            // 7. Save to DB
             await Note.findByIdAndUpdate(noteId, {
                 title: parsed.title?.trim() || "Untitled",
-                content: parsed.content?.trim() || "",
-                keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
+                content: decodeDoubleEscapedMarkdown(parsed.content?.trim()) || streamedContent,
+                keywords: parsed.keywords || [],
                 summary: parsed.summary || null,
-                isProcessing: false,
+                status: "completed",
                 previousContent: null,
                 previousTitle: null,
-            })
-            sseManager.send(noteId, { type: "done", data: parsed })
+            });
+
+            writeLog(noteId, "Saved note to database.")
+
+            // 8. Notify frontend
+            sseManager.send(noteId, {
+                type: "done",
+                data: parsed,
+            });
+
+            writeLog(
+                noteId,
+                `JOB FINISHED in ${Date.now() - startTime}ms (First token: ${firstToken - apiStart
+                }ms)`
+            )
+
         } catch (error) {
-            console.error(`OpenAI API error for note ${noteId}: `, error.message)
+
+            writeLog(noteId, `ERROR: ${err?.message}`)
+
+            // Mark as failed but retryable
+            await Note.findByIdAndUpdate(noteId, { status: "retrying" })
 
             sseManager.send(noteId, {
                 type: "error",
-                message: `Processing failed, retrying... (${(job.attemptsMade || 0) + 1}/3)`,
+                message: `Processing failed, retrying... (${job.attemptsMade}/3)`,
                 retry: true,
             })
             //throw error, BullMQ will handle retry
@@ -104,19 +243,36 @@ worker.on('completed', (job) => {
 worker.on('failed', async (job, err) => {
     const noteId = job?.data?.noteId
     if (!noteId) return
-    console.error(`AI job failed for note ${noteId}: `, err.message)
+
+    const attempts = job.opts.attempts || 1
+    const attempt = job.attemptsMade
+
+    console.error(`AI job failed for note ${noteId} (attempt ${attempt}/${attempts}): ${err.message}`)
+
+    // Not final attempt → do nothing
+    if (attempt < attempts) {
+        await Note.findByIdAndUpdate(noteId, { status: "retrying" })
+        return
+    }
 
     // All retry attempts failed → perform rollback
     try {
+        const note = await Note.findById(noteId).lean()
+
+        if (!note) {
+            console.error("Note not found during rollback:", noteId);
+            return;
+        }
+
         await Note.updateOne(
-            { _id, noteId },
+            { _id: noteId },
             {
                 $set: {
-                    title: { $ifNull: ["$previousTitle", "Untitled"] },
-                    content: { $ifNull: ["$previousContent", "$rawContent"] },
+                    title: note.previousTitle || "Untitled",
+                    content: note.previousContent || note.rawContent || "[content lost]",
                     keywords: [],
                     summary: null,
-                    isProcessing: false,
+                    status: "failed", //final failure
                 },
                 $unset: {
                     previousContent: "",
