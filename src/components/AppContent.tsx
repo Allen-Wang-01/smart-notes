@@ -9,6 +9,7 @@ import MainContent from './MainContent';
 import ReportPage from './ReportPage';
 import Login from './Login';
 import Register from './Register';
+import NotePage from './NotePage';
 import ProtectedRoute from './ProtectedRoute';
 import styles from '../styles/Main.module.scss'
 
@@ -33,11 +34,9 @@ const AppContent = () => {
 
             try {
                 const { data } = await api.post('/auth/refresh');
-                console.log(isMounted, "is Mounted")
                 if (isMounted) {
                     dispatch(login({ accessToken: data.accessToken, user: data.user }));
                 }
-                console.log('AppContent logged in')
             } catch (err) {
                 console.log('Refresh failed:', err);
                 if (isMounted && !['/login', '/register'].includes(location.pathname)) {
@@ -118,7 +117,7 @@ const AppContent = () => {
                         path="/note/:id"
                         element={
                             <ProtectedRoute>
-                                <MainContent />
+                                <NotePage />
                             </ProtectedRoute>
                         }
                     />
