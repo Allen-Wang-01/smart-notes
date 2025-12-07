@@ -54,7 +54,7 @@ api.interceptors.response.use(
             isRefreshing = true
 
             try {
-                const response = await axios.post('/auth/refresh')
+                const response = await axios.post('/api/auth/refresh')
                 const { accessToken: newAccessToken } = response.data
                 store.dispatch(updateAccessToken(newAccessToken))
                 processQueue(null, newAccessToken)
