@@ -44,10 +44,11 @@ const noteSchema = new mongoose.Schema(
             type: String,
             default: null, // used for rollback title when regeneration fails
         },
-        isProcessing: {
-            type: Boolean,
-            default: true, // true when AI is working
-        }
+        status: {
+            type: String,
+            enum: ["pending", "processing", "retrying", "completed", "failed"],
+            default: "pending",
+        },
     },
     {
         timestamps: true,
