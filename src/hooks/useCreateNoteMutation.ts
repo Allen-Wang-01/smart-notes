@@ -15,7 +15,7 @@ interface CreateNoteResponse {
         title: string;
         category: string;
         date: string;
-        isProcessing: boolean;
+        status: "pending" | "processing" | "retrying" | "completed" | "failed";
     }
 }
 
@@ -32,7 +32,6 @@ export const useCreateNoteMutation = () => {
             const newNoteId = data.note.id
             //Invalidate notes list to trigger refetch
             queryClient.invalidateQueries({ queryKey: ['notes'] })
-            toast.success('Note Created! AI is organizing your content...')
             //update for sidebar
             queryClient.setQueryData(['notes'], (old: any) => {
                 if (!old?.pages?.length) return old
@@ -42,7 +41,7 @@ export const useCreateNoteMutation = () => {
                     // Ensure correct shape for your sidebar
                     id: newNoteId,
                     title: "Generating title...", // Show placeholder during streaming
-                    isProcessing: true,
+                    status: "pending",
                 };
 
                 return {
@@ -57,15 +56,16 @@ export const useCreateNoteMutation = () => {
                 };
             })
             toast.success("Note created! AI is organizing your content...");
-
+            console.log("Navigate to", `/note/${data.note.id}`);
             //  Navigate to note page + trigger streaming
-            navigate(`/notes/${newNoteId}`, {
+            navigate(`/note/${newNoteId}`, {
                 state: { shouldStream: true }, // Tell NotePage to start streaming immediately
                 replace: true, //  cleaner history (no back to empty form)
             });
         },
         onError: (error: any) => {
             toast.error(error.response?.data?.error || 'Failed to create note')
-        }
+        },
+        retry: false,
     })
 }
