@@ -4,7 +4,7 @@ import redis from "../config/redis.js";
 const aiQueue = new Queue('ai-processing', {
     connection: redis,
     defaultJobOptions: {
-        attempts: 3, //Retry failed jobs up to 3 times
+        attempts: 2, //Retry failed jobs up to 2 times
         backoff: {
             type: 'exponential', // Exponential backoff strategy
             delay: 2000 // Initial delay of 2 seconds (2s → 4s → 8s → 16s → 32s)
