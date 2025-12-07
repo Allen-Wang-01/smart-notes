@@ -13,68 +13,77 @@ interface StreamData {
     summary?: string | null;
 }
 
-export const useNoteStream = (noteId?: string) => {
+export const useNoteStream = (noteId?: string, enabled = false) => {
     const [title, setTitle] = useState("Generating title...")
     const [isStreaming, setIsStreaming] = useState(false)
     const [content, setContent] = useState("")
     const [isDone, setIsDone] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const bufferRef = useRef<string>("")
+    // Prevent duplicate SSE connections
+    const eventSourceRef = useRef<EventSource | null>(null)
 
     useEffect(() => {
-        if (!noteId) return
+        // If no noteId or streaming disabled → do nothing
+        if (!noteId || !enabled) return
+
+        // prevent duplicate SSE connections
+        if (eventSourceRef.current) {
+            // Already connected → do not re-connect
+            return
+        }
 
         setTitle("Generating title...")
         setContent("")
         setIsStreaming(true)
         setIsDone(false)
         setError(null)
-        bufferRef.current = ""
 
+        // Create SSE connection
         const eventSource = new EventSource(`/api/notes/${noteId}/stream`, {
             withCredentials: true
         })
 
+        eventSourceRef.current = eventSource
+
         eventSource.onmessage = (e) => {
             try {
                 const data = JSON.parse(e.data)
-                if (data.type === "chunk" && typeof data.content === "string") {
-                    bufferRef.current += data.content
-
-                    const titleMatch = bufferRef.current.match(/"title"\s*:\s*"([^"]*?)"/)
-                    if (titleMatch && titleMatch[1].trim()) {
-                        setTitle(titleMatch[1].trim());
-                    }
-
-                    const contentMatch = bufferRef.current.match(/"content"\s*:\s*"([\s\S]*?)"/);
-                    if (contentMatch) {
-                        const cleaned = contentMatch[1]
-                            .replace(/\\n/g, "\n")
-                            .replace(/\\"/g, '"')
-                            .replace(/\\t/g, "\t");
-                        setContent(cleaned);
-                    }
+                // --------------------------
+                // STREAM CONTENT CHUNKS
+                // --------------------------
+                if (data.type === "chunk") {
+                    const delta = data.content || "";
+                    setContent(prev => prev + delta);
+                    return;
                 }
-                if (data.type === "done" && data.data) {
-                    const final = data.data as StreamData;
-                    setTitle(final.title?.trim() || "Untitled");
-                    setContent(final.content?.trim() || content);
-                    setIsDone(true);
+                // --------------------------
+                // FINAL JSON ARRIVES
+                // --------------------------
+                if (data.type === "done") {
+                    const final: StreamData = data.data || {};
+
+                    if (final.title) setTitle(final.title.trim());
+                    if (final.content) setContent(final.content.trim());
+
                     setIsStreaming(false);
+                    setIsDone(true);
                     eventSource.close();
+                    eventSourceRef.current = null;
+                    return;
                 }
-
+                // --------------------------
+                // ERRORS
+                // --------------------------
                 if (data.type === "error") {
-                    if (data.retry) {
-                        setTitle(`Retrying... (${data.message.split("(")[1] || ""}`);
-                    } else {
-                        setTitle("Generation failed");
-                        setContent("AI processing failed after all retries. Your original note is safe.");
-                        setError(data.message);
-                        setIsStreaming(false);
-                        setIsDone(true);
-                        eventSource.close();
+                    setError(data.message || "Unknown error")
+
+                    if (!data.retry) {
+                        // final failure
+                        setIsStreaming(false)
+                        setIsDone(true)
+                        eventSource.close()
+                        eventSourceRef.current = null
                     }
                 }
             } catch (err) {
@@ -89,10 +98,14 @@ export const useNoteStream = (noteId?: string) => {
             setError("Connection failed");
             setIsStreaming(false);
             eventSource.close();
+            eventSourceRef.current = null;
         }
-
+        // cleanup when component unmounts or noteId changes
         return () => {
-            eventSource.close()
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                eventSourceRef.current = null;
+            }
         }
     }, [noteId])
 
