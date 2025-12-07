@@ -9,7 +9,7 @@ import { sseManager } from '../utils/sseManager.js'
 
 export const getNoteStream = async (req, res) => {
     const { id } = req.params
-    const userId = req.userId
+    const userId = req.user.userId
 
     // vertify the note exists and belongs to the user
     const note = await Note.findOne({ _id: id, userId })
@@ -18,12 +18,12 @@ export const getNoteStream = async (req, res) => {
     }
 
     //if the note is already processed, return it immediately
-    if (!note.isProcessing) {
+    if (["completed", "failed"].includes(note.status)) {
         return res.status(200).json({
             title: note.title,
             content: note.content,
-            keywords: note.keywords,
-        })
+            status: note.status,
+        });
     }
 
     //set Server-Sent Events (SSE) headers
@@ -53,7 +53,7 @@ export const getNoteStream = async (req, res) => {
 
 export const createNote = async (req, res) => {
     const { rawContent, category = 'study' } = req.body
-    const userId = req.userId
+    const userId = req.user.userId
     if (!rawContent?.trim()) {
         return res.status(400).json({ error: 'rawContent is required' })
     }
@@ -62,7 +62,7 @@ export const createNote = async (req, res) => {
             userId,
             rawContent: rawContent.trim(),
             category,
-            isProcessing: true,
+            status: "pending",
         })
 
         await note.save()
@@ -80,7 +80,7 @@ export const createNote = async (req, res) => {
                 title: 'Processing...',
                 category: note.category,
                 date: note.createdAt,
-                isProcessing: true,
+                status: "pending",
             },
         })
     } catch (error) {
@@ -96,7 +96,7 @@ export const createNote = async (req, res) => {
  */
 
 export const getNotesList = async (req, res) => {
-    const userId = req.userId
+    const userId = req.user.userId
     const page = parseInt(req.query.page, 10) || 1
     const limit = parseInt(req.query.limit, 10) || 20
     const skip = (page - 1) * limit
@@ -135,12 +135,13 @@ export const getNotesList = async (req, res) => {
 
 export const getNoteById = async (req, res) => {
     const { id } = req.params
-    const userId = req.userId
+    const userId = req.user.userId
 
     try {
-        const note = await Note.findOne({ id: id, userId })
-            .select('title content rawContent category keywords createdAt isProcessing')
+        const note = await Note.findOne({ _id: id, userId: userId })
+            .select('title content rawContent category keywords createdAt updatedAt status')
             .lean()
+
         if (!note) {
             return res.status(404).json({ error: 'Note not found' })
         }
@@ -153,8 +154,9 @@ export const getNoteById = async (req, res) => {
                 rawContent: note.rawContent,
                 category: note.category,
                 keywords: note.keywords || [],
-                date: note.createdAt,
-                isProcessing: note.isProcessing || false,
+                created: note.createdAt,
+                updated: note.updatedAt,
+                status: note.status,
             },
         })
     } catch (error) {
@@ -170,7 +172,7 @@ export const getNoteById = async (req, res) => {
 
 export const updateNote = async (req, res) => {
     const { id } = req.params;
-    const userId = req.userId;
+    const userId = req.user.userId;
     const updates = req.body
     //validate: at least one field
     if (!updates.title && !updates.content && !updates.category) {
@@ -178,7 +180,7 @@ export const updateNote = async (req, res) => {
     }
     try {
         const note = await Note.findOneAndUpdate(
-            { id: id, userId },
+            { _id: id, userId: userId },
             { $set: updates },
             { new: true, runValidators: true }
         ).select('title content category keywords createdAt')
@@ -215,7 +217,7 @@ export const updateNote = async (req, res) => {
  * 2. Creates a backup of the current content (in case regeneration fails).
  * 3. Resets the note’s title, content, and keywords, and marks it as processing.
  * 4. Enqueues a new BullMQ job ("process-note") to have the AI regenerate the note.
- * 5. Returns the updated note metadata with `isProcessing: true`.
+ * 5. Returns the updated note metadata with `status = processing`.
  *
  * The frontend will automatically receive the regenerated content
  * through the existing SSE (Server-Sent Events) stream endpoint:
@@ -226,7 +228,7 @@ export const updateNote = async (req, res) => {
  */
 export const regenerateNote = async (req, res) => {
     const { id } = req.params
-    const userId = req.userId
+    const userId = req.user.userId
 
     try {
         const note = await Note.findOne({ _id: id, userId })
@@ -235,7 +237,7 @@ export const regenerateNote = async (req, res) => {
         }
 
         await Note.findByIdAndUpdate(id, {
-            isProcessing: true,
+            status: "pending",
             title: "Regenerating...",
             content: "",
             keywords: [],
@@ -268,9 +270,9 @@ export const regenerateNote = async (req, res) => {
 
 export const deleteNote = async (req, res) => {
     const { id } = req.params
-    const userId = req.userId
+    const userId = req.user.userId
     try {
-        const note = await Note.findOneAndDelete({ _id: id, userId })
+        const note = await Note.findOneAndDelete({ _id: id, userId: userId })
 
         if (!note) {
             return res.status(404).json({ error: 'Note not found' })
