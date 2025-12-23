@@ -156,3 +156,66 @@ export const getAvailablePeriods = async (req, res) => {
     }
 }
 
+export const generateReport = async (req, res) => {
+    try {
+        if (!req.body) {
+            return res.status(400).json({
+                message: "Request body is required"
+            })
+        }
+        const { type, periodKey } = req.body
+        const userId = req.user?.userId
+
+        if (!userId) {
+            return res.status(401).json({
+                message: "Unauthorized"
+            })
+        }
+
+        if (!type || !periodKey) {
+            return res.status(400).json({
+                message: "Both type and periodKey are required"
+            })
+        }
+
+        if (!["weekly", "monthly"].includes(type)) {
+            return res.status(400).json({
+                message: "Invalid report type",
+            });
+        }
+
+        const report = await generateReportService({
+            userId,
+            type,
+            periodKey,
+        });
+
+        return res.status(202).json({
+            reportId: report._id,
+            status: report.status,
+        });
+    } catch (err) {
+        console.error("[generateReport] error:", err);
+
+        return res.status(500).json({
+            message: "Failed to generate report",
+        });
+    }
+}
+
+export const retryReport = async (req, res) => {
+    const report = await Report.findById(req.params.reportId)
+
+    if (!report) return res.status(404).json({ message: "Not found" })
+
+    if (report.status !== "failed") {
+        return res.status(400).json({ message: "Only failed reports can be retried" })
+    }
+
+    report.status = "pending"
+    report.errorMessage = null
+    await report.save()
+
+    await enqueueReportJob(report)
+    res.json({ message: "Retry queued", reportId: report._id })
+}
