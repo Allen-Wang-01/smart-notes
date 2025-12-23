@@ -111,3 +111,48 @@ export async function getMonthlyReport(userId, selectedMonthPeriod) {
     }
 }
 
+/**
+ * GET /reports/available-periods
+ * Returns the earliest & latest weekly/monthly report periodKey for the user
+ */
+export const getAvailablePeriods = async (req, res) => {
+    try {
+        const userId = req.user.userId
+
+        // Fetch only what we need: type & periodKey
+        const reports = await Report.find(
+            { userId },
+            { type: 1, periodKey: 1 }
+        ).lean()
+
+        // group & sort
+        const weeklyKeys = reports
+            .filter(r => r.type === 'weekly')
+            .map(r => r.periodKey)
+            .sort()
+
+        const monthlyKeys = reports
+            .filter(r => r.type === 'monthly')
+            .map(r => r.periodKey)
+            .sort()
+
+        const response = {
+            weekly: {
+                earliest: weeklyKeys[0] || null,
+                latest: weeklyKeys[weeklyKeys.length - 1] || null,
+            },
+            monthly: {
+                earliest: monthlyKeys[0] || null,
+                latest: monthlyKeys[monthlyKeys.length - 1] || null,
+            }
+        }
+        return res.json({ ok: true, periods: response })
+    } catch (err) {
+        console.error("Error in getAvailablePeriods:", err)
+        return res.status(500).json({
+            ok: false,
+            error: "Failed to fetch available report periods",
+        })
+    }
+}
+
