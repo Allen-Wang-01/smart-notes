@@ -64,3 +64,29 @@ export function getPreviousPeriodKey(key: string): string {
     }
     throw new Error('Invalid period key')
 }
+
+/** Get next period key for "YYYY-WW" or "YYYY-MM" */
+export function getNextPeriodKey(key: string): string {
+    if (key.includes('-W')) {
+        const match = key.match(/(\d{4})-W(\d{2})/)
+        if (!match) throw new Error('Invalid week key')
+        const [, year, week] = match
+        const thursday = new Date(
+            parseInt(year),
+            0,
+            4 + (parseInt(week) - 1) * 7
+        )
+        thursday.setDate(thursday.getDate() + 7)
+        return getWeeklyKey(thursday)
+    }
+
+    if (key.includes('-M')) {
+        const match = key.match(/(\d{4})-M(\d{2})/)
+        if (!match) throw new Error('Invalid month key')
+        const [, year, month] = match
+
+        const d = new Date(parseInt(year), parseInt(month), 1)
+        return getMonthlyKey(d)
+    }
+    throw new Error('Invalid period key')
+}
