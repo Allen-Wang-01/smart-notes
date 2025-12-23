@@ -68,7 +68,7 @@ export function getWeeklyKey(date = new Date()) {
     const d = new Date(date)
     const year = d.getFullYear()
     const week = getISOWeek(d).toString().padStart(2, '0')
-    return `${year} - W${week}`
+    return `${year}-W${week}`
 }
 
 /**
@@ -82,7 +82,7 @@ export function getMonthlyKey(date = new Date()) {
     const d = new Date(date)
     const year = d.getFullYear()
     const month = (d.getMonth() + 1).toString().padStart(2, '0') // Jan = 01
-    return `${year} - ${month}`
+    return `${year}-M${month}`
 }
 
 /**
