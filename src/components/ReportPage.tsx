@@ -1,68 +1,111 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
-import { getWeeklyKey, getMonthlyKey, getPreviousPeriodKey } from "../utils/period";
+import { getPreviousPeriodKey, getNextPeriodKey } from "../utils/period";
 import styles from '../styles/Report.module.scss'
 import ReportHeader from "./ReportHeader";
 import ReportStats from "./ReportStats";
 import ReportSummary from "./ReportSummary";
 import ReportPoetic from "./ReportPoetic";
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
+
+interface ReportData {
+    report?: any;
+    status?: string;
+    message?: string;
+}
+
+
+interface AvailablePeriods {
+    weekly: { earliest: string; latest: string };
+    monthly: { earliest: string; latest: string };
+}
 
 type ViewType = 'weekly' | 'monthly'
 
 const ReportPage = () => {
     const [viewType, setViewType] = useState<ViewType>('weekly')
+    const queryClient = useQueryClient()
 
-    //By default, display the latest report
-    const today = new Date()
-    const defaultWeeklyKey = getPreviousPeriodKey(getWeeklyKey(today)) //last week
-    const defaultMonthlyKey = getPreviousPeriodKey(getMonthlyKey(today)) //last month
+    const { data: availablePeriods } = useQuery<{
+        periods: AvailablePeriods;
+    }>({
+        queryKey: ["available-periods"],
+        queryFn: async () =>
+            api.get("/reports/available-periods").then((res) => res.data),
+        staleTime: 1000 * 60 * 60, // 1 hour
+    })
+    const [selectedPeriod, setSelectedPeriod] = useState<string>("");
 
-    const [selectedPeriod, setSelectdPeriod] = useState<string>(
-        viewType === 'weekly' ? defaultWeeklyKey : defaultMonthlyKey
-    )
-
-    const fetchReport = (type: 'weekly' | 'monthly', params: any) => {
-        return api.get(`/reports/${type}`, { params });
-    };
-
-    // load the lastest report automatically when switch between weekly/monthly
     useEffect(() => {
-        setSelectdPeriod(viewType === 'weekly' ? defaultWeeklyKey : defaultMonthlyKey)
-    }, [viewType, defaultWeeklyKey, defaultMonthlyKey])
+        if (!availablePeriods) return
 
-    const getParams = () => {
-        if (viewType === 'weekly') {
-            const year = selectedPeriod.split('-W')[0]
-            const week = selectedPeriod.split('-W')[1]
-            const jan4 = new Date(parseInt(year), 0, 4)
-            const start = new Date(jan4)
-            start.setDate(jan4.getDate() + (parseInt(week) - 1) * 7 - jan4.getDay() + 1)
-            return { date: start.toISOString().split('T')[0] }
-        } else {
-            const year = selectedPeriod.split('-M')[0]
-            const month = selectedPeriod.split('-M')[1]
-            return { year: parseInt(year), month: parseInt(month) }
+        const latest = viewType === 'weekly'
+            ? availablePeriods.periods.weekly.latest
+            : availablePeriods.periods.monthly.latest
+        setSelectedPeriod(latest)
+
+        if (!latest) {
+            setSelectedPeriod("");
+            return;
+        }
+    }, [viewType, availablePeriods])
+
+    const { data, isLoading } = useQuery<ReportData>({
+        queryKey: ["report", viewType, selectedPeriod],
+        queryFn: () => api.get(`/reports/${viewType}`, { params: { selectedWeekPeriod: selectedPeriod } })
+            .then((res) => res.data),
+        enabled: !!selectedPeriod, // ensure selectedPeriod is ready
+        retry: 1,
+        staleTime: 1000 * 60 * 60 * 24,
+    })
+
+    const report = data?.report
+
+    const retryReport = async () => {
+        if (!report?.id) return
+        try {
+            await api.post(`/reports/retry/${report.id}`)
+            // refresh
+            queryClient.invalidateQueries({ queryKey: ['report', viewType, selectedPeriod] })
+        } catch (err) {
+            console.error(err)
+            toast.error("Retry failed")
         }
     }
 
-    const { data, isLoading, error } = useQuery({
-        queryKey: ['report', viewType, selectedPeriod],
-        queryFn: () => fetchReport(viewType, getParams()),
-        staleTime: 1000 * 60 * 60 * 24, //catched for 1 day, so it's fresh in 1 day
-        retry: 1,
-    })
+    const goPrev = () => {
+        if (!availablePeriods || !selectedPeriod) return
 
-    const report = data?.data?.report
-    const streamUrl = data?.data?.streamUrl
+        const prev = getPreviousPeriodKey(selectedPeriod)
+        const earliest =
+            viewType === 'weekly'
+                ? availablePeriods.periods.weekly.earliest
+                : availablePeriods.periods.monthly.earliest
 
-    const goPrev = () => setSelectdPeriod(getPreviousPeriodKey(selectedPeriod))
-    const goNext = () => {
-        const next = getPreviousPeriodKey(getPreviousPeriodKey(selectedPeriod)) // next is the opposite
-        const current = viewType === 'weekly' ? getWeeklyKey() : getMonthlyKey()
-        // not allow to go beyond the current period
-        if (next < current) setSelectdPeriod(getPreviousPeriodKey(selectedPeriod))
+        if (earliest && prev < earliest) return
+        setSelectedPeriod(prev)
     }
+
+    const goNext = () => {
+        if (!availablePeriods || !selectedPeriod) return
+
+        const next = getNextPeriodKey(selectedPeriod)
+        const latest =
+            viewType === 'weekly'
+                ? availablePeriods.periods.weekly.latest
+                : availablePeriods.periods.monthly.latest
+
+        if (latest && next > latest) return
+        setSelectedPeriod(next)
+    }
+
+    // const generateTest = () => {
+    //     api.post('/reports/generate', {
+    //         type: "weekly",
+    //         periodKey: "2025-W50"
+    //     })
+    // }
 
     return (
         <div className={styles.container}>
@@ -79,50 +122,78 @@ const ReportPage = () => {
                 </button>
             </div>
 
-            {/* period navigator */}
-            <div className={styles.navigator}>
-                <button onClick={goPrev} disabled={isLoading}>
-                    Previous
-                </button>
-                <span className={styles.currentPeriod}>
-                    {viewType === 'weekly'
-                        ? `Week ${selectedPeriod.split('-W')[1]} · ${selectedPeriod.split('-')[0]}`
-                        : `${selectedPeriod.replace('-M', ' / ')}`
-                    }
-                </span>
-                <button onClick={goNext} disabled={isLoading ||
-                    selectedPeriod === (viewType === 'weekly' ?
-                        getPreviousPeriodKey(getWeeklyKey()) :
-                        getPreviousPeriodKey(getMonthlyKey())
-                    )}>
-                    Next
-                </button>
-            </div>
+            {/* <button onClick={generateTest}>
+                generate test button
+            </button> */}
 
-            {isLoading && !streamUrl && (
+            {/* period navigator */}
+            {report && (
+                <div className={styles.navigator}>
+                    <button
+                        className={styles.navButton}
+                        onClick={goPrev}
+                        disabled={isLoading}>
+                        Previous
+                    </button>
+                    <span className={styles.currentPeriod}>
+                        {selectedPeriod.replace('-', " ")}
+                    </span>
+                    <button
+                        className={styles.navButton}
+                        onClick={goNext}
+                        disabled={isLoading}
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
+
+
+            {isLoading && (
                 <div className={styles.placeholder}>
                     <p>Loading your reflection...</p>
                 </div>
             )}
 
-            {streamUrl && (
+            {/* Pending / processing */}
+            {report?.status === 'pending' || report?.status === 'processing' ? (
                 <div className={styles.placeholder}>
-                    <p>Crafting your {viewType} growth story...</p>
+                    <p>Generating your {viewType} report...</p>
+                    <p>Please check back in a moment.</p>
                 </div>
-            )}
+            ) : null}
 
-            {!report && !isLoading && !streamUrl && (
+
+            {/* Failed */}
+            {report?.status === 'failed' && (
                 <div className={styles.empty}>
-                    <p>No notes yet for this period.</p>
-                    <p>Start writting today - your future self will thank you.</p>
+                    <p>Report generation failed.</p>
+                    <p>You may retry later.</p>
+                    <button
+                        onClick={retryReport}
+                        className={styles.retryButton}
+                    >
+                        Retry
+                    </button>
+                    {report.errorMessage && <p className={styles.errorMessage}>{report.errorMessage}</p>}
                 </div>
             )}
 
-            {report && (
+            {/* No report */}
+            {!report && (
+                <div className={styles.empty}>
+                    <p>No report for this period.</p>
+                    <p>Start writing notes to see insights!</p>
+                    <p>Report will be shown when it's ready!</p>
+                </div>
+            )}
+
+            {/* Completed */}
+            {report && report.status === 'completed' && (
                 <>
                     <ReportHeader type={viewType} period={report.periodKey} />
                     <ReportStats stats={report.stats} />
-                    <ReportSummary sentences={report.content} streamUrl={streamUrl} reportId={report.id} />
+                    <ReportSummary sentences={report.content} />
                     {report.poeticLine && <ReportPoetic line={report.poeticLine} />}
                 </>
             )}
