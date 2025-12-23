@@ -107,13 +107,6 @@ const worker = new Worker(
                     generatedAt: new Date(),
                 }
             )
-            // await Report.findByIdAndUpdate(reportId, {
-            //     status: 'completed',
-            //     content: reportResult.summary,
-            //     poeticLine: reportResult.poetic,
-            //     stats,
-            //     generatedAt: new Date(),
-            // });
             return { success: true, periodKey };
         } catch (err) {
             await Report.findOneAndUpdate(
