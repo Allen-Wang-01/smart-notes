@@ -16,6 +16,9 @@ import { Router } from "express";
 import {
     getWeeklyReport,
     getMonthlyReport,
+    getAvailablePeriods,
+    retryReport,
+    generateReport,
 } from '../controllers/reportController.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 
@@ -27,12 +30,12 @@ router.use(authMiddleware)
 // Weekly report
 router.get('/weekly', async (req, res) => {
     try {
-        const { date } = req.query
-        if (!date) {
-            return res.status(400).json({ error: 'Query param `date` is required' })
+        const { selectedWeekPeriod } = req.query
+        if (!selectedWeekPeriod) {
+            return res.status(400).json({ error: 'Query param `selectedWeekPeriod` is required' })
         }
 
-        const result = await getWeeklyReport(req.user.id, date)
+        const result = await getWeeklyReport(req.user.userId, selectedWeekPeriod)
         res.status(result.status).json(result.data)
     } catch (err) {
         console.error('Weekly report error: ', err)
@@ -43,13 +46,13 @@ router.get('/weekly', async (req, res) => {
 // Monthly resport
 router.get('/monthly', async (req, res) => {
     try {
-        const { year, month } = req.query
-        if (!year || !month) {
+        const { selectedMonthPeriod } = req.query
+        if (selectedMonthPeriod) {
             return res
                 .status(400)
-                .json({ error: 'Query params `year` and `month` are required' })
+                .json({ error: 'Query params selectedMonthPeriod are required' })
         }
-        const result = await getMonthlyReport(req.user.id, parseInt(year), parseInt(month))
+        const result = await getMonthlyReport(req.user.userId, selectedMonthPeriod)
         res.status(result.status).json(result.data)
     } catch (err) {
         console.error('Monthly report error: ', err)
@@ -57,5 +60,11 @@ router.get('/monthly', async (req, res) => {
     }
 })
 
+//GET /available-periods
+router.get('/available-periods', getAvailablePeriods)
+// Post /:reportId/retry
+router.post('/retry/:reportId', retryReport)
+// Post /generate
+router.post('/generate', generateReport)
 export default router
 
