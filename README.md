@@ -117,6 +117,73 @@ The goal is to provide not only AI-enhanced note organization, but also insight,
 - "AI is generating your note" indicator during note generation to enhance user feedback
 - Clean note navigation (sidebar, infinite scroll, etc.)
 
+## 📊 AI-Powered Weekly & Monthly Reports
+This project includes an AI-generated reflection system inspired by Spotify Wrapped, designed to help users understand their note-taking habits over time.
+
+## ✨ What Problem It Solves
+Instead of showing raw notes, the system:
+- Aggregates user activity over a **weekly / monthly period**
+- Extracts meaningful patterns (active days, frequent themes)
+- Generates a warm, human-readable reflection using an LLM
+
+The goal is not analytics dashboards, but self-awareness and encouragement.
+---
+## 🧠 Key Design Decisions
+
+### 1. Non-Streaming AI Reports(Intentional)
+Unlike note summarization, reports are: 
+- Generated via background jobs
+- Persisted in the database
+- Loaded on demand by the frontend
+### Why?
+- Reports combine text + statistics, which don’t fit streaming UX
+- Users may open the page long after generation
+- Improves reliability and simplifies frontend logic
+---
+### 2. Idempotent Background Generation
+- Weekly & monthly reports are triggered by cron jobs
+- Each report is uniquely identified by:
+```
+(userId, type, periodKey)
+```
+- BullMQ jobId guarantees no duplicete jobs
+- Users can also trigger generation manually if needed
+--- 
+### 3. Structured LLM Output with Schema Validation
+AI output is validated using a strict JSON schema:
+```
+{
+  summary: string[],
+  poeticLine: string
+}
+
+```
+- Prevents malformed responses
+- Eliminates fragile JSON.parse logic
+- Ensures type-safe consumption by the frontend
+---
+
+### 4. Graceful handling of Low or No Activity
+If a user has little or no activity during a period:
+- The system **skipes the LLM call**
+- Generates a short, empathetic fallback message
+- Avoids unnecessary API cost while maintaining UX consistency
+---
+### 5. Clear Report Lifecycle & Retry Support
+Each report has a well-defined lifecycle:
+```
+pending → processing → completed / failed
+```
+- Failures are persisted
+- Users can manually retry generation
+- Successful reports are cached and reused
+
+## 🔧 Tech Stack Highlights
+- Backend: Node.js, MongoDB, Mongoose, BullMQ, node-cron
+- AI: OpenAI API with schema-validated structured output
+- Frontend: React, React Query
+- Architecture: Background jobs, deterministic period keys, idempotent processing
+
 ## Tech Stack
 
 ### **Frontend**
