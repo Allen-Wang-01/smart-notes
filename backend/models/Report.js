@@ -26,10 +26,6 @@ const reportSchema = new mongoose.Schema(
             type: Date,
             required: true,
         },
-        title: {
-            type: String,
-            default: null,
-        },
         content: {
             type: [String], //Array of encouraging sentences
             default: [],
@@ -41,18 +37,15 @@ const reportSchema = new mongoose.Schema(
         stats: {
             noteCount: { type: Number, default: 0 },
             activeDays: { type: Number, default: 0 },
-            topKeywords: [
-                {
-                    keyword: String,
-                    count: Number,
-                },
-            ],
-            categories: [
-                {
-                    name: String,
-                    count: Number,
-                },
-            ],
+            topKeywords: {
+                type: [
+                    {
+                        keyword: String,
+                        count: Number,
+                    },
+                ],
+                default: [],
+            },
         },
         status: {
             type: String,
@@ -61,6 +54,11 @@ const reportSchema = new mongoose.Schema(
         },
         generatedAt: {
             type: Date,
+        },
+        /**Error message when status === 'failed' */
+        errorMessage: {
+            type: String,
+            default: null,
         },
     },
     {
