@@ -12,99 +12,119 @@ import { Worker } from "bullmq";
 import Note from "../models/Note.js";
 import Report from "../models/Report.js";
 import { queue } from '../queues/reportQueue.js'
-import OpenAI from "openai";
-import { sseManager } from "../utils/sseManager.js";
-
-// const openai = new OpenAI({
-//   apiKey: process.env.OPENAI_API_KEY,
-// });
+import { buildReportPrompt, buildLowActivityPrompt } from "../utils/buildReportPrompt.js";
+import { generateReportText } from "../utils/generateReport.js";
+import dotenv from 'dotenv'
+import { writeLog } from "../utils/log.js"
+dotenv.config();
 
 const worker = new Worker(
     'report-generation',
     async (job) => {
+        console.log('job.data:', job.data)
         const { reportId, userId, periodKey, startDate, endDate } = job.data
         const type = periodKey.includes('-W') ? 'weekly' : 'monthly'
-
+        console.log("workerKey: ", periodKey)
         // update status to processing
-        await Report.findByIdAndUpdate(reportId, {
-            status: 'processing',
-            generatedAt: new Date(),
-        })
+        const locked = await Report.findOneAndUpdate(
+            { _id: reportId, status: 'pending' },
+            { status: 'processing', generatedAt: new Date() }
+        )
 
-        sseManager.send(reportId, {
-            type: 'status',
-            status: 'processing',
-            message: `Crafting your ${type === 'weekly' ? 'weekly' : 'monthly'} growth journey…`,
-        })
+        if (!locked) {
+            const report = await Report.findById(reportId)
+
+            if (!report || report.status === 'completed') {
+                return { skipped: true }
+            }
+
+            throw new Error(`Unexpected report state: ${report?.status}`)
+        }
 
         try {
-            // aggregate notes in period
+            // load notes of this period
             const notes = await Note.find({
                 userId,
                 createdAt: { $gte: startDate, $lte: endDate },
                 summary: { $ne: null },
-            }).select('summary keywords title created At')
-
-            if (notes.length === 0) {
-                throw new Error('No notes with summary in thie period')
-            }
+            }).select('summary keywords title createdAt')
 
             // build stats
             const stats = buildStats(notes)
+
+            writeLog(reportId, JSON.stringify(stats, null, 2))
+
+            if (stats.noteCount === 0) {
+                await Report.findByIdAndUpdate(reportId, {
+                    status: 'completed',
+                    content: [
+                        "You didn’t leave any notes during this period, and that’s okay.",
+                        "Every journey has quiet weeks — your next reflection is waiting."
+                    ],
+                    poeticLine: "Silence, too, is part of becoming.",
+                    stats,
+                    generatedAt: new Date(),
+                })
+                return { skippedAI: true }
+            }
+
             const representativeSummaries = notes
-                .slice(0, 5)
+                .slice(0, 3)
                 .map((n) => `- "${n.summary}"`)
                 .join('\n');
 
             //  Construct AI prompt
-            const prompt = buildPrompt(type, stats, representativeSummaries, periodKey);
-
-            // Stream OpenAI response
-            const stream = await openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: [{ role: 'user', content: prompt }],
-                response_format: { type: 'json_object' },
-                stream: true,
-            });
-
-            let fullText = '';
-            for await (const chunk of stream) {
-                const delta = chunk.choices[0]?.delta?.content || '';
-                fullText += delta;
-                sseManager.send(reportId, { type: 'chunk', content: delta });
+            let prompt
+            if (stats.noteCount <= 2) {
+                prompt = buildLowActivityPrompt({
+                    stats,
+                    summaries: representativeSummaries,
+                })
+            } else {
+                prompt = buildReportPrompt({
+                    type,
+                    stats,
+                    summaries: representativeSummaries,
+                    periodKey,
+                })
             }
 
-            // Parse AI output
-            const result = JSON.parse(fullText);
-            const { summary, poetic } = result;
+            writeLog(reportId, prompt)
+
+            // Call OpenAI, non-streaming
+            const reportResult = await generateReportText(prompt)
+
+            writeLog(reportId, JSON.stringify(reportResult, null, 2))
 
             // save final report
-            await Report.findByIdAndUpdate(reportId, {
-                status: 'completed',
-                content: summary,
-                poeticLine: poetic,
-                stats,
-                generatedAt: new Date(),
-            });
-
-            sseManager.send(reportId, {
-                type: 'done',
-                data: { summary, poetic, stats },
-            });
-
+            await Report.findOneAndUpdate(
+                { _id: reportId, status: 'processing' },
+                {
+                    status: 'completed',
+                    content: reportResult.summary,
+                    poeticLine: reportResult.poeticLine,
+                    stats,
+                    generatedAt: new Date(),
+                }
+            )
+            // await Report.findByIdAndUpdate(reportId, {
+            //     status: 'completed',
+            //     content: reportResult.summary,
+            //     poeticLine: reportResult.poetic,
+            //     stats,
+            //     generatedAt: new Date(),
+            // });
             return { success: true, periodKey };
         } catch (err) {
+            await Report.findOneAndUpdate(
+                { _id: reportId, status: 'processing' },
+                {
+                    status: 'failed',
+                    errorMessage: err instanceof Error ? err.message : String(err),
+                }
+            )
+
             console.error(`Report generation failed [${reportId}]:`, err);
-
-            await Report.findByIdAndUpdate(reportId, {
-                status: 'failed',
-            });
-
-            sseManager.send(reportId, {
-                type: 'error',
-                message: 'generation failed, please try again',
-            });
-
             throw err; // BullMQ will retry
         }
     },
@@ -136,43 +156,12 @@ function buildStats(notes) {
     return { noteCount, activeDays, topKeywords }
 }
 
-
-function buildPrompt(type, stats, summaries, periodKey) {
-    const isWeekly = type === 'weekly';
-    const weekNum = periodKey.split('-W')[1];
-    const monthLabel = periodKey.replace('-M', '-').replace(/(\d{4})-(\d{2})/, '$1 Month $2');
-    const timeLabel = isWeekly
-        ? `Week ${weekNum}`
-        : monthLabel;
-
-    return `
-You are a warm and insightful growth companion, creating a ${isWeekly ? 'weekly' : 'monthly'} reflection for the user.
-
-### Data Overview
-- Time: ${timeLabel}
-- Total Notes: ${stats.noteCount}
-- Active Days: ${stats.activeDays}
-- Top Keywords: ${stats.topKeywords.map(k => k.keyword).join(', ')}
-
-### Representative Summaries
-${summaries}
-
-### Requirements
-1. Generate 2–3 natural, encouraging, and insightful sentences (like a friend sharing observations)
-2. Include at least **one specific detail** (e.g., a keyword or behavior)
-3. End with **one poetic closing line** (10–18 words, vivid and evocative)
-4. Output in JSON:
-{
-  "summary": ["Sentence 1", "Sentence 2"],
-  "poetic": "Between code and coffee, you wrote your own spring."
-}
-`.trim();
-}
-
 worker.on('completed', (job) => {
     console.log(`[Report Worker] Successfully generated ${job.data.periodKey} for user ${job.data.userId}`);
 });
 
-worker.on('failed', (job, err) => {
-    console.error(`[Report Worker] Failed to generate ${job.data.periodKey} for user ${job.data.userId}:`, err.message);
+worker.on('failed', async (job, err) => {
+    console.error(
+        `[Report Worker] ✖ Failed report: ${job.data.periodKey} | User: ${job.data.userId} | Attempts: ${job.attemptsMade} | Error: ${err.message}`
+    );
 });
