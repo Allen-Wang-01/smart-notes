@@ -2,7 +2,7 @@ import express from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
-
+import { env } from '../config/env.js'
 const router = express.Router()
 
 //register
@@ -51,9 +51,9 @@ router.post('/register', async (req, res) => {
         //http-only cookie
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
-            secure: false, //false(http) in development environment, true(https) in production
-            sameSite: 'lax', //lax in development, strict in production
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7days
+            secure: env.cookie.secure, //false(http) in development environment, true(https) in production
+            sameSite: env.cookie.sameSite, //lax in development, strict in production
+            maxAge: env.cookie.maxAge, // 7days
             path: '/',
         })
 
@@ -106,9 +106,9 @@ router.post('/login', async (req, res) => {
         //http-only cookie
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
-            secure: false, //false(http) in development environment, true(https) in production
-            sameSite: 'lax', //lax in development, strict in production
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7days
+            secure: env.cookie.secure, //false(http) in development environment, true(https) in production
+            sameSite: env.cookie.sameSite, //lax in development, strict in production
+            maxAge: env.cookie.maxAge, // 7days
             path: '/',
         })
 
@@ -161,8 +161,8 @@ router.post('/logout', async (req, res) => {
 
     res.clearCookie('refreshToken', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: env.cookie.secure,
+        sameSite: env.cookie.sameSite,
         path: '/',
     });
 
