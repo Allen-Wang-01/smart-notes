@@ -1,5 +1,4 @@
 export function buildReportPrompt({ type, stats, summaries, periodKey }) {
-    console.log("prompt key: ", periodKey)
     const isWeekly = type === 'weekly'
 
     const weekNum = periodKey.includes('-W')

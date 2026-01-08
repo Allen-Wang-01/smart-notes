@@ -19,7 +19,10 @@ if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true })
 }
 
+const isProd = process.env.NODE_ENV === 'production';
+
 export function writeLog(noteId, message) {
+    if (isProd) return
     const filePath = path.join(LOG_DIR, `note-${noteId}.log`);
 
     const timestamp = new Date().toISOString();
