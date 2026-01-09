@@ -1,4 +1,4 @@
-import { queue } from "../queues/reportQueue.js"
+import { getReportQueue } from "../queues/reportQueue.js"
 
 export async function enqueueReportJob(report) {
     if (report.status === "completed") return
@@ -6,6 +6,8 @@ export async function enqueueReportJob(report) {
     report.status = "pending"
     report.errorMessage = null
     await report.save()
+
+    const queue = getReportQueue()
 
     //enqueue job(idempotent)
     await queue.add(

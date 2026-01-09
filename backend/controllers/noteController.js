@@ -1,5 +1,5 @@
 import Note from '../models/Note.js'
-import aiQueue from '../queues/aiQueue.js'
+import { getAIQueue } from '../queues/aiQueue.js'
 import { sseManager } from '../utils/sseManager.js'
 
 /**
@@ -57,6 +57,7 @@ export const createNote = async (req, res) => {
     if (!rawContent?.trim()) {
         return res.status(400).json({ error: 'rawContent is required' })
     }
+    const aiQueue = getAIQueue()
     try {
         const note = new Note({
             userId,
@@ -230,6 +231,7 @@ export const regenerateNote = async (req, res) => {
     const { id } = req.params
     const userId = req.user.userId
 
+    const aiQueue = getAIQueue()
     try {
         const note = await Note.findOne({ _id: id, userId })
         if (!note) {

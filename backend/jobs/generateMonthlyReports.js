@@ -9,61 +9,57 @@
  * =============================================================================
  */
 
-import corn from 'node-cron'
+import cron from 'node-cron'
 import User from '../models/User.js'
 import { getPreviousPeriodKey, getMonthlyKey } from '../utils/period.js'
 import { generateReportService } from '../services/reportService.js';
 
 // 1st of month, 00:05 JST → avoids conflict with weekly job
 const JOB_CRON = '5 0 1 * *';
+console.log('[Cron] generateMonthlyReports module loaded')
 console.log('[Cron] Scheduling monthly report job:', JOB_CRON, 'in Asia/Tokyo');
 
-const monthlyJob = corn.schedule(
-    JOB_CRON,
-    async () => {
-        const startTime = Date.now()
-        console.log(`[Monthly Cron] Starting at ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' })}`)
+export function startMonthlyReportJob() {
+    cron.schedule(
+        JOB_CRON,
+        async () => {
+            const startTime = Date.now()
+            console.log(`[Monthly Cron] Starting at ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' })}`)
 
-        let successCount = 0
-        let failCount = 0
+            let successCount = 0
+            let failCount = 0
 
-        try {
-            const periodKey = getPreviousPeriodKey(getMonthlyKey())
-            console.log(`[Monthly Cron] Target period: ${periodKey}`)
+            try {
+                const periodKey = getPreviousPeriodKey(getMonthlyKey())
+                console.log(`[Monthly Cron] Target period: ${periodKey}`)
 
-            const users = await User.find({ isActive: true }).select('_id')
-            console.log(`[Monthly Cron] Found ${users.length} active users`)
+                const users = await User.find({ isActive: true }).select('_id')
+                console.log(`[Monthly Cron] Found ${users.length} active users`)
 
-            for (const user of users) {
-                try {
-                    await generateReportService({
-                        userId: user._id.toString(),
-                        type: "monthly",
-                        periodKey,
-                    })
-                    successCount++;
-                } catch (err) {
-                    failCount++
-                    console.error(`[Monthly Cron] Failed to queue for user ${user._id}:`, err.message);
+                for (const user of users) {
+                    try {
+                        await generateReportService({
+                            userId: user._id.toString(),
+                            type: "monthly",
+                            periodKey,
+                        })
+                        successCount++;
+                    } catch (err) {
+                        failCount++
+                        console.error(`[Monthly Cron] Failed to queue for user ${user._id}:`, err.message);
+                    }
                 }
+            } catch (err) {
+                console.error('[Monthly Cron] Fatal error:', err);
+            } finally {
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                console.log(
+                    `[Monthly Cron] Completed in ${duration}s | Success: ${successCount} | Failed: ${failCount}`
+                );
             }
-        } catch (err) {
-            console.error('[Monthly Cron] Fatal error:', err);
-        } finally {
-            const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-            console.log(
-                `[Monthly Cron] Completed in ${duration}s | Success: ${successCount} | Failed: ${failCount}`
-            );
+        },
+        {
+            timezone: 'Asia/Tokyo',
         }
-    },
-    {
-        scheduled: false,
-        timezone: 'Asia/Tokyo',
-    }
-)
-
-// Start the job
-monthlyJob.start();
-console.log('[Cron] Monthly report job scheduled and running');
-
-export default monthlyJob;
+    )
+}

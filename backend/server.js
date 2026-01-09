@@ -6,8 +6,6 @@ import authRoutes from './routes/auth.js'
 import cookieParser from 'cookie-parser';
 import noteRouter from './routes/note.js'
 import reportRoutes from './routes/reports.js'
-import './workers/aiWorker.js'
-import './workers/reportWorker.js';
 import { apiRateLimiter, authRateLimiter } from './middleware/rateLimiters.js'
 import { env } from './config/env.js'
 dotenv.config();
@@ -45,13 +43,20 @@ app.get('/', (req, res) => {
 
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
-    console.log('AI Worker started. Ready to process notes.');
+    const { startAIWorker } = await import('./workers/aiWorker.js')
+    const { startReportWorker } = await import('./workers/reportWorker.js')
+    startAIWorker()
+    startReportWorker()
+    console.log('[Server] Workers started');
 
-    // NOW safe to start background jobs
-    import('./jobs/generateWeeklyReports.js');
-    import('./jobs/generateMonthlyReports.js');
-    console.log('[Server] Cron jobs loaded: weekly (Sun 00:00), monthly (1st 00:05) JST');
+    if (process.env.NODE_ENV === 'production') {
+        const { startWeeklyReportJob } = await import('./jobs/generateWeeklyReports.js');
+        const { startMonthlyReportJob } = await import('./jobs/generateMonthlyReports.js');
+        startWeeklyReportJob()
+        startMonthlyReportJob()
+        console.log('[Server] Cron jobs loaded: weekly (Sun 00:00), monthly (1st 00:05) JST');
+    }
 });
 

@@ -7,17 +7,24 @@
  */
 
 import { Queue } from 'bullmq'
-import redis from '../config/redis.js'
+import { getRedis } from '../config/redis.js'
 
-export const queue = new Queue('report-generation', {
-    connection: redis,
-    defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-            type: 'exponential',
-            delay: 5000,
-        },
-        removeOnComplete: 10, //Keep last 10 successful for audit trail
-        removeOnFail: 5,  // Keep last 5 failed for debug cron issues
-    }
-})
+let reportQueue
+
+export function getReportQueue() {
+    if (reportQueue) return reportQueue
+
+    reportQueue = new Queue('report-generation', {
+        connection: getRedis(),
+        defaultJobOptions: {
+            attempts: 3,
+            backoff: {
+                type: 'exponential',
+                delay: 5000,
+            },
+            removeOnComplete: 10, //Keep last 10 successful for audit trail
+            removeOnFail: 5,  // Keep last 5 failed for debug cron issues
+        }
+    })
+    return reportQueue
+}
