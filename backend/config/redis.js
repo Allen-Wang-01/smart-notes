@@ -4,6 +4,7 @@ const redisUrl = process.env.REDIS_URL
 
 const redis = redisUrl ?
     new Redis(redisUrl, {
+        tls: {}, // REQUIRED for Upstash
         maxRetriesPerRequest: null,
         enableReadyCheck: false,
     }) :
