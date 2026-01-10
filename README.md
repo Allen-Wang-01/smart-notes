@@ -4,7 +4,7 @@ Built using React, Express, BullMQ, OpenAI, MongoDB, and Server-Sent Events.
 
 
 ## Architecture
-![High-Level Architecture](./public/High-Level%20Architecture%20Diagram.png)
+![High-Level Architecture](./docs/images/High-Level%20Architecture%20Diagram.png)
 
 ## 1. Overview
 This project is a real-time AI-powered note processing system designed with production-level archiecture principles.
