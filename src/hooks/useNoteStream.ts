@@ -39,8 +39,10 @@ export const useNoteStream = (noteId?: string, enabled = false) => {
         setIsDone(false)
         setError(null)
 
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+
         // Create SSE connection
-        const eventSource = new EventSource(`/api/notes/${noteId}/stream`, {
+        const eventSource = new EventSource(`${API_BASE_URL}/notes/${noteId}/stream`, {
             withCredentials: true
         })
 
