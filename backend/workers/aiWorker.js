@@ -69,8 +69,9 @@ export function startAIWorker() {
 
             // --- STREAM CONTROL ---
             let streamedContent = "";  //<CONTENT> part
-            let fullStreamText = "";  // all output includes FINAL_JSON
-            let finalJsonString = null;
+            let metadataBuffer = ""
+            let contentBuffer = ""
+            let mode = "CONTENT" // CONTENT | METADATA
 
             // TIMING
             let apiStart = null;
@@ -116,86 +117,100 @@ export function startAIWorker() {
                         );
                     }
 
-
-                    let incoming = "";
-
-
                     // ---- 1. delta chunk: response.output_text.delta ----
 
                     if (chunk.type === "response.output_text.delta") {
-                        incoming = chunk.delta || "";
-                        fullStreamText += incoming;
+                        const text = chunk.delta || ""
+
+                        // ===== CONTENT MODE =====
 
 
-                        if (
-                            fullStreamText.includes("<CONTENT>") &&
-                            !fullStreamText.includes("<FINAL_JSON>")
-                        ) {
-                            const afterStart = fullStreamText.split("<CONTENT>")[1] || "";
-                            const currentContent =
-                                afterStart.split("</CONTENT>")[0] || "";
+                        if (mode === "CONTENT") {
+                            contentBuffer += text
+                            const marker = "<METADATA>"
+                            const markerIndex = contentBuffer.indexOf(marker)
+                            if (markerIndex !== -1) {
+                                const before = contentBuffer.slice(0, markerIndex)
+                                const after = contentBuffer.slice(markerIndex + marker.length)
+                                // streaming only real content
+                                if (before) {
+                                    streamedContent += before;
+                                    sseManager.send(noteId, {
+                                        type: "chunk",
+                                        content: before,
+                                    })
+                                }
 
-                            streamedContent = currentContent;
+                                // switch to METADATA mode
+                                mode = "METADATA";
+                                metadataBuffer += after;
 
-                            sseManager.send(noteId, {
-                                type: "chunk",
-                                content: incoming,
-                            });
+                                //clear buffer
+                                contentBuffer = "";
+                            } else {
+                                // stream only the safe part
+                                const safeLength = Math.max(
+                                    0,
+                                    contentBuffer.length - (marker.length - 1)
+                                );
+
+                                if (safeLength > 0) {
+                                    const safeContent = contentBuffer.slice(0, safeLength);
+
+                                    streamedContent += safeContent;
+                                    sseManager.send(noteId, {
+                                        type: "chunk",
+                                        content: safeContent,
+                                    });
+
+                                    contentBuffer = contentBuffer.slice(safeLength);
+                                }
+                            }
+                        } else if (mode === "METADATA") {
+                            metadataBuffer += text
                         }
-
-                        continue;
+                        continue
                     }
 
 
                     if (chunk.type === "response.output_text.done") {
-                        incoming = chunk.text || "";
-                        fullStreamText += incoming;
-
-
-                        const afterContentTag = fullStreamText.split("<CONTENT>")[1] || "";
-                        streamedContent = afterContentTag.split("</CONTENT>")[0] || "";
-
-                        const afterJsonTag = fullStreamText.split("<FINAL_JSON>")[1] || "";
-                        finalJsonString = afterJsonTag.split("</FINAL_JSON>")[0]?.trim() || "";
-
+                        if (chunk.text) {
+                            metadataBuffer += chunk.text
+                        }
                         writeLog(
                             noteId,
-                            `STREAM DONE. Total stream chars = ${fullStreamText.length}`
+                            `STREAM DONE. Total stream chars = ${streamedContent.length}`
                         );
-
                         break;
                     }
                 }
 
                 // 6. Parse final JSON safely
-                let parsed = null;
+                let parsedMeta = {
+                    title: "Untitled",
+                    keywords: [],
+                    summary: null,
+                }
 
-                if (finalJsonString) {
+                if (metadataBuffer) {
                     try {
-                        parsed = JSON.parse(finalJsonString);
+                        const raw = metadataBuffer
+                            .replace(/^<METADATA>\s*/i, "")
+                            .split("</METADATA>")[0]
+                            .trim();
+
+                        parsedMeta = JSON.parse(raw);
                     } catch (e) {
-
-                        const fixed = finalJsonString
-                            .replace(/\\n/g, "\n")
-                            .replace(/\\"/g, '"');
-
-                        parsed = JSON.parse(fixed);
+                        writeLog(noteId, `METADATA PARSE ERROR: ${e.message}`);
                     }
-                } else {
-                    parsed = {
-                        title: "Untitled",
-                        summary: null,
-                        keywords: [],
-                        content: streamedContent,
-                    };
                 }
 
                 // 7. Save to DB
                 await Note.findByIdAndUpdate(noteId, {
-                    title: parsed.title?.trim() || "Untitled",
-                    content: decodeDoubleEscapedMarkdown(parsed.content?.trim()) || streamedContent,
-                    keywords: parsed.keywords || [],
-                    summary: parsed.summary || null,
+                    title: parsedMeta.title?.trim() || "Untitled",
+                    content: streamedContent.trim(),
+                    keywords: parsedMeta.keywords || [],
+                    summary: parsedMeta.summary || null,
                     status: "completed",
                     previousContent: null,
                     previousTitle: null,
@@ -206,7 +221,11 @@ export function startAIWorker() {
                 // 8. Notify frontend
                 sseManager.send(noteId, {
                     type: "done",
-                    data: parsed,
+                    data: {
+                        title: parsedMeta.title,
+                        keywords: parsedMeta.keywords,
+                        summary: parsedMeta.summary,
+                    },
                 });
 
                 writeLog(
