@@ -20,6 +20,26 @@ export const useNoteStream = (noteId?: string, enabled = false) => {
     const [isDone, setIsDone] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    const pendingBufferRef = useRef("")
+
+    useEffect(() => {
+        if (!isStreaming) return;
+
+        const interval = setInterval(() => {
+            if (!pendingBufferRef.current) return;
+
+            const STEP = 5;
+            const next = pendingBufferRef.current.slice(0, STEP);
+
+            pendingBufferRef.current =
+                pendingBufferRef.current.slice(STEP);
+
+            setContent(prev => prev + next);
+        }, 30);
+        return () => clearInterval(interval);
+    }, [isStreaming]);
+
+
     // Prevent duplicate SSE connections
     const eventSourceRef = useRef<EventSource | null>(null)
 
@@ -55,8 +75,7 @@ export const useNoteStream = (noteId?: string, enabled = false) => {
                 // STREAM CONTENT CHUNKS
                 // --------------------------
                 if (data.type === "chunk") {
-                    const delta = data.content || "";
-                    setContent(prev => prev + delta);
+                    pendingBufferRef.current += data.content || "";
                     return;
                 }
                 // --------------------------
@@ -66,7 +85,9 @@ export const useNoteStream = (noteId?: string, enabled = false) => {
                     const final: StreamData = data.data || {};
 
                     if (final.title) setTitle(final.title.trim());
-                    if (final.content) setContent(final.content.trim());
+
+                    setContent(prev => prev + pendingBufferRef.current);
+                    pendingBufferRef.current = "";
 
                     setIsStreaming(false);
                     setIsDone(true);
