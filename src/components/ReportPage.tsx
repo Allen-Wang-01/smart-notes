@@ -83,7 +83,10 @@ const ReportPage = () => {
                 ? availablePeriods.periods.weekly.earliest
                 : availablePeriods.periods.monthly.earliest
 
-        if (earliest && prev < earliest) return
+        if (earliest && prev < earliest) {
+            toast.success('You’ve reached the earliest available period.')
+            return
+        }
         setSelectedPeriod(prev)
     }
 
@@ -96,7 +99,10 @@ const ReportPage = () => {
                 ? availablePeriods.periods.weekly.latest
                 : availablePeriods.periods.monthly.latest
 
-        if (latest && next > latest) return
+        if (latest && next > latest) {
+            toast.success("You’ve reached the latest available period.")
+            return
+        }
         setSelectedPeriod(next)
     }
 
