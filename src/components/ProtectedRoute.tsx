@@ -7,8 +7,12 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-    const { isAuthenticated } = useAppSelector((state) => state.auth)
+    const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth)
     const location = useLocation()
+
+    if (isLoading) {
+        return null
+    }
 
     if (!isAuthenticated) {
         //if not loged in, jump to login page and record the origin navigation
