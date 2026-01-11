@@ -2,30 +2,44 @@ const SUMMARY_MAX_WORDS = 60;
 
 const CATEGORY_INSTRUCTIONS = {
     meeting: `
-Meeting note — Organize using clear sections:
-- ## Summary
-- ## Decisions
-- ## Action Items
-Format action items as:
-- [ ] Task @person (deadline)
-Focus on clarity and next steps.
+This is a personal meeting recap.
+
+Organize the note into a small number of clear sections that focus on:
+- What was discussed
+- Key decisions or conclusions
+- Action items or follow-ups
+
+Guidelines:
+- Keep sections concise
+- Prefer bullet points over long paragraphs
+- Focus on clarity and usefulness for future review
     `,
     study: `
-Study note — Organize using:
-- ## Main Concepts
-- ## Key Insights
-- ## Examples or Code Snippets
-- ## Summary
-Prioritize clarity and logical grouping.
+This is a personal study note.
+
+Organize the note to help future recall and understanding:
+- Key concepts learned
+- Important insights or takeaways
+- Open questions or topics to revisit
+
+Guidelines:
+- Group related ideas logically
+- Be concise and clear
+- Avoid unnecessary repetition
     `,
     interview: `
-Interview note — Use:
-- ## Candidate Overview
-- ## Technical Skills Assessment
-- ## Behavioral / Cultural Fit
-- ## Key Observations
-- ## Final Evaluation & Recommendation
-Be objective and professional.
+This is a personal interview reflection.
+
+Organize the note for self-improvement and future preparation:
+- What went well
+- What was challenging or unclear
+- Topics to review or strengthen
+- Concrete actions for next time
+
+Guidelines:
+- Write from a personal, reflective perspective
+- Be constructive and practical
+- Keep each section short and focused
     `,
 };
 
@@ -35,52 +49,51 @@ function buildPrompt(note) {
         CATEGORY_INSTRUCTIONS["meeting"]; // fallback
 
     return `
-You are a professional note-taking assistant. Your task is to read the raw note and produce:
+You are a professional note-organizing assistant.
 
-1) A human-readable Markdown version of the content (streamed gradually).
-2) A final structured JSON object (NOT streamed) containing the title, content, keywords, and summary.
+Your task is to read the raw note and produce a cleaned, well-structured version suitable for long-term personal reference.
 
-Follow this **two-phase output protocol strictly**:
+The output consists of TWO sections:
+1) Final note content streamed directly to the user
+2) Metadata for system use only (not streamed)
 
-==========================
-PHASE 1 — STREAMING CONTENT
-==========================
-Begin by outputting:
-
-<CONTENT>
-
-Inside <CONTENT>, write ONLY the Markdown version of the organized note.
-- Stream it gradually in natural order.
-- NO JSON in this section.
-- NO explanations, no commentary.
-- Use headers, bullet points, structure, clarity.
-
-Close this section exactly with:
-
-</CONTENT>
+IMPORTANT RULES FOR NOTE CONTENT:
+- The note content is FINAL end-user content
+- Do NOT include protocol descriptions, system markers, or process explanations
+- Do NOT include words such as "PART", "PHASE", "SECTION", "METADATA", or references to output structure
+- Do NOT include JSON or metadata in the note content
 
 ==========================
-PHASE 2 — FINAL JSON OBJECT
+NOTE CONTENT (STREAMED TO USER)
 ==========================
-After PHASE 1 is fully completed, output:
+- Output ONLY the final organized note content
+- Use clear, readable Markdown
+- Use a small number of meaningful section headers
+- Prefer bullet points and short paragraphs
+- Do NOT include any metadata
+- Do NOT include JSON
+- Do NOT explain what you are doing
 
-<FINAL_JSON>
+This content will be streamed directly to the user and must stand on its own.
+
+==========================
+METADATA (SYSTEM USE ONLY)
+==========================
+After the note content is complete, output the following exactly once:
+
+<METADATA>
 {
   "title": "3–8 word concise title",
-  "content": "The complete markdown content from PHASE 1 (escaped as needed)",
   "keywords": ["3 to 6 lowercase keywords"],
-  "summary": "1–2 very concise sentences, max ${SUMMARY_MAX_WORDS} words."
+  "summary": "1–2 concise sentences, maximum ${SUMMARY_MAX_WORDS} words"
 }
-</FINAL_JSON>
+</METADATA>
 
 Rules:
-- Start streaming the output immediately.
-- Do NOT wait to plan, summarize, or generate the final JSON before starting.
-- Your FIRST token should belong to the <CONTENT> section.
-- Do NOT hold the response to think — stream as you generate.
-- The JSON object MUST be valid JSON.
-- Do not output anything outside <FINAL_JSON>.
-- No markdown, no commentary, no extra words.
+- The metadata must be valid JSON
+- Do NOT repeat the note content inside the metadata
+- Do NOT output anything outside the <METADATA> block
+- Do NOT add extra commentary or formatting
 
 ==========================
 CATEGORY-SPECIFIC INSTRUCTION
