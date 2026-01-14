@@ -6,7 +6,7 @@ import api from '../api/axios';
 import styles from '../styles/Login.module.scss'
 import toast from 'react-hot-toast';
 import { useAppSelector } from '../redux/hooks';
-
+import LoadingScreen from './LoadingScreen';
 
 const Login: React.FC = () => {
     const [email, setEmail] = useState("");
@@ -58,7 +58,7 @@ const Login: React.FC = () => {
     }
 
     if (isLoading) {
-        return <div>Loading...</div>;
+        return <LoadingScreen />;
     }
 
     if (!isAuthenticated) {
