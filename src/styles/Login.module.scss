@@ -3,10 +3,25 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh; // 让卡片垂直居中
+    height: 100vh;
     padding: 1rem;
     background-color: #f9f9f9;
 }
+
+.demoHint {
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #374151;
+    background: #f3f4f6;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.demoHint strong {
+    color: #111827;
+}
+
 
 .loginCard {
     background: #fff;
@@ -14,15 +29,15 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     padding: 2rem;
 
-    width: 90%; // 手机端基本占满屏幕
-    max-width: 400px; // 大屏幕限制最大宽度
-    min-width: 300px; // 保证小屏幕不太窄
+    width: 90%;
+    max-width: 400px;
+    min-width: 300px;
 
     display: flex;
     flex-direction: column;
     gap: 1.2rem;
 
-    font-size: clamp(0.9rem, 1.5vw, 1.2rem); // 字体大小响应式
+    font-size: clamp(0.9rem, 1.5vw, 1.2rem);
 }
 
 .loginTitle {
