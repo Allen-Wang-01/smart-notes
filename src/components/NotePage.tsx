@@ -4,6 +4,7 @@ import api from "../api/axios";
 import NoteEditor from "./NoteEditor";
 import { useNoteStream } from "../hooks/useNoteStream";
 import { useEffect, useMemo } from "react";
+import styles from '../styles/NotePage.module.scss'
 
 const NotePage = () => {
     const { id } = useParams<{ id: string }>()
@@ -64,8 +65,23 @@ const NotePage = () => {
 
 
     // 6. Loading / Error states
-    if (isLoading) return <div>Loading note...</div>;
-    if (isError || !note) return <div>Note not found</div>;
+    if (isLoading) {
+        return (
+            <div className={styles.noteState}>
+                <div className={styles.spinner} />
+                <p>Loading note...</p>
+            </div>
+        );
+    }
+
+    if (isError || !note) {
+        return (
+            <div className={styles.noteState}>
+                <p className={styles.errorText}>Note not found</p>
+            </div>
+        );
+    }
+
 
     return <NoteEditor
         note={note}
