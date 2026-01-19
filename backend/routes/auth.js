@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
 import { env } from '../config/env.js'
 const router = express.Router()
+import { loginWithCredentials } from '../services/authService.js'
 
 //register
 router.post('/register', async (req, res) => {
@@ -73,35 +74,8 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body
 
-        if (!email || !password) {
-            return res.status(400).json({ message: 'Please provide email and password' })
-        }
-
-        const user = await User.findOne({ email })
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid email or password' })
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password)
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid email or password' })
-        }
-
-        const accessToken = jwt.sign(
-            { userId: user._id, username: user.username },
-            process.env.ACCESS_TOKEN_SECRET,
-            { expiresIn: '15m' }
-        )
-
-        const refreshToken = jwt.sign(
-            { userId: user._id },
-            process.env.REFRESH_TOKEN_SECRET,
-            { expiresIn: '7d' }
-        )
-
-        //save refreshToken to database
-        user.refreshToken = refreshToken;
-        await user.save()
+        const { accessToken, refreshToken, user } =
+            await loginWithCredentials({ email, password })
 
         //http-only cookie
         res.cookie('refreshToken', refreshToken, {
@@ -118,8 +92,46 @@ router.post('/login', async (req, res) => {
             user: { id: user._id, username: user.username, email: user.email }
         })
     } catch (error) {
+        if (error.message === 'MISSING_CREDENTIALS') {
+            return res.status(400).json({ message: 'Please provide email and password' });
+        }
+        if (error.message === 'INVALID_CREDENTIALS') {
+            return res.status(400).json({ message: 'Invalid email or password' });
+        }
+
         console.error('Login error: ', error);
         res.status(500).json({ message: 'Server error' })
+    }
+})
+
+router.post('/demo-login', async (req, res) => {
+    try {
+        const email = process.env.DEMO_USER_EMAIL
+        const password = process.env.DEMO_USER_PASSWORD
+
+        if (!email || !password) {
+            console.error('Demo account env not configured');
+            return res.status(500).json({ message: 'Demo account not configured' });
+        }
+        const { accessToken, refreshToken, user } =
+            await loginWithCredentials({ email, password });
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: env.cookie.secure,
+            sameSite: env.cookie.sameSite,
+            maxAge: env.cookie.maxAge,
+            path: '/',
+        });
+
+        res.json({
+            accessToken,
+            user: { id: user._id, username: user.username, email: user.email },
+            demo: true,
+        });
+    } catch (error) {
+        console.error('Demo login error:', error);
+        res.status(500).json({ message: 'Demo login failed' });
     }
 })
 

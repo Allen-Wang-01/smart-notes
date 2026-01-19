@@ -57,6 +57,19 @@ const Login: React.FC = () => {
         }
     }
 
+    const handleDemoLogin = async () => {
+        try {
+            const response = await api.post(`/auth/demo-login`)
+            const { user, accessToken } = response.data
+            dispatch(login({ user, accessToken }))
+            navigate('/')
+        } catch (error: any) {
+            const errorMessage = error.response?.data?.message || 'Demo Login failed. Please try again'
+            setErrors({ server: errorMessage })
+            toast.error(errorMessage)
+        }
+    }
+
     if (isLoading) {
         return <LoadingScreen />;
     }
@@ -99,6 +112,13 @@ const Login: React.FC = () => {
                         </div>
 
                         <button type='submit' className={styles.loginButton}>Login</button>
+
+                        <button
+                            className={styles.demoLoginBtn}
+                            onClick={handleDemoLogin}
+                        >
+                            Try Demo Account
+                        </button>
                     </form>
                     <p className={styles.registerLink}>
                         Don't have an account ? <a href="/register">Register</a>
