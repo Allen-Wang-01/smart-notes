@@ -78,11 +78,6 @@ const Login: React.FC = () => {
         return (
             <div className={styles.loginPage}>
                 <div className={styles.loginCard}>
-                    <p className={styles.demoHint}>
-                        This is a production-style system with user authentication.
-                        <br />
-                        <strong>Demo credentials will be provided soon.</strong>
-                    </p>
                     <h2 className={styles.loginTitle}>Login</h2>
                     {errors.server && <p className={styles.errorMessage}>{errors.server}</p>}
                     <form onSubmit={onSubmit} noValidate>
@@ -109,6 +104,7 @@ const Login: React.FC = () => {
                                 className={errors.password ? "error" : ""}
                                 placeholder='Pease enter password'
                             />
+                            {errors.password && <p className={styles.errorMessage}>{errors.password}</p>}
                         </div>
 
                         <button type='submit' className={styles.loginButton}>Login</button>

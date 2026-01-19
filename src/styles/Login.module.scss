@@ -4,24 +4,8 @@
     justify-content: center;
     align-items: center;
     height: 100vh;
-    padding: 1rem;
     background-color: #f9f9f9;
 }
-
-.demoHint {
-    padding: 10px 12px;
-    font-size: 13px;
-    line-height: 1.4;
-    color: #374151;
-    background: #f3f4f6;
-    border-radius: 6px;
-    text-align: center;
-}
-
-.demoHint strong {
-    color: #111827;
-}
-
 
 .loginCard {
     background: #fff;
@@ -77,7 +61,7 @@
         }
     }
 
-    .error-message {
+    .errorMessage {
         margin-top: 0.4rem;
         font-size: 0.85rem;
         color: #e74c3c;

@@ -6,6 +6,7 @@ import { login } from '../redux/slices/authSlice';
 import { useAppSelector } from '../redux/hooks';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
+import LoadingScreen from './LoadingScreen';
 
 
 const Register: React.FC = () => {
@@ -84,7 +85,7 @@ const Register: React.FC = () => {
     }
 
     if (isLoading) {
-        return <div>Loading...</div>;
+        return <LoadingScreen />;
     }
 
     if (!isAuthenticated) {
