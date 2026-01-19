@@ -2,6 +2,8 @@ import { Toaster } from "react-hot-toast";
 import AppContent from './components/AppContent';
 import { BrowserRouter as Router } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
+import Modal from "react-modal"
+Modal.setAppElement("#root");
 function App() {
   return (
     <Router>

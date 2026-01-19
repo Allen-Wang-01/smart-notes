@@ -6,11 +6,13 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import OriginalNoteModal from "./OriginalNoteModal";
 
 export interface Note {
     id: string;
     title: string;
     content: string;
+    rawContent: string;
     created: string;
     updated: string;
     status: "pending" | "processing" | "retrying" | "completed" | "failed";
@@ -30,6 +32,7 @@ const NoteEditor = ({ note, isStreaming, streamError }: NoteEditorProps) => {
     const [editTitle, setEditTitle] = useState(note.title);
     const [editContent, setEditContent] = useState(note.content);
     const [editCategory, setEditCategory] = useState(note.category);
+    const [showOriginal, setShowOriginal] = useState(false)
 
     // When database note updates (after refetch), sync into editor
     useEffect(() => {
@@ -127,6 +130,13 @@ const NoteEditor = ({ note, isStreaming, streamError }: NoteEditorProps) => {
                                     ? "Regenerating..."
                                     : "Regenerate"}
                             </button>
+
+                            <button
+                                onClick={() => setShowOriginal(true)}
+                            >
+                                Original Note
+                            </button>
+
                             <button
                                 onClick={() => deleteMutation.mutate()}
                                 disabled={disableRegenerate}
@@ -200,6 +210,14 @@ const NoteEditor = ({ note, isStreaming, streamError }: NoteEditorProps) => {
                 )}
             </div>
 
+
+            {/* Modal */}
+            <OriginalNoteModal
+                isOpen={showOriginal}
+                onClose={() => setShowOriginal(false)}
+                rawContent={note.rawContent}
+                category={note.category}
+            />
 
             <div className={styles.meta}>
                 <span>createAt: {new Date(note.created).toLocaleDateString()}</span>
