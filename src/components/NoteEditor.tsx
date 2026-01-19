@@ -49,7 +49,7 @@ const NoteEditor = ({ note, isStreaming, streamError }: NoteEditorProps) => {
         mutationFn: async () => {
             if (!editTitle.trim()) throw new Error("Title cannot be empty")
             if (!editContent.trim()) throw new Error("Content cannot be empty")
-            const res = await api.patch(`/notes/${note.id}`, {
+            const res = await api.put(`/notes/${note.id}`, {
                 title: editTitle.trim(),
                 content: editContent.trim(),
                 category: editCategory,
