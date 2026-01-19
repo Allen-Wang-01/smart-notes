@@ -19,11 +19,8 @@ const client = new OpenAI()
 
 //Worker: Process note with OpenAI
 
-let worker
-
 export function startAIWorker() {
-    if (worker) return
-    worker = new Worker(
+    const worker = new Worker(
         'ai-processing',
         async (job) => {
             const { noteId } = job.data
@@ -314,6 +311,6 @@ export function startAIWorker() {
         }
     })
 
-    console.log('[Worker] AI worker started');
+    console.log('[Worker] AI worker created');
     return worker
 }

@@ -18,11 +18,9 @@ import dotenv from 'dotenv'
 import { writeLog } from "../utils/log.js"
 dotenv.config();
 
-let worker
-export function startReportWorker() {
-    if (worker) return
 
-    worker = new Worker(
+export function startReportWorker() {
+    const worker = new Worker(
         'report-generation',
         async (job) => {
             console.log('job.data:', job.data)

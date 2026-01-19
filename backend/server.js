@@ -45,11 +45,6 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
-    const { startAIWorker } = await import('./workers/aiWorker.js')
-    const { startReportWorker } = await import('./workers/reportWorker.js')
-    startAIWorker()
-    startReportWorker()
-    console.log('[Server] Workers started');
 
     if (process.env.NODE_ENV === 'production') {
         const { startWeeklyReportJob } = await import('./jobs/generateWeeklyReports.js');

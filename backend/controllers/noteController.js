@@ -1,6 +1,7 @@
 import Note from '../models/Note.js'
 import { getAIQueue } from '../queues/aiQueue.js'
 import { sseManager } from '../utils/sseManager.js'
+import { aiWorkerController } from '../workers/aiWorkerController.js'
 
 /**
  * GET /api/notes/:id/stream
@@ -73,6 +74,8 @@ export const createNote = async (req, res) => {
             { noteId: note._id },
             { jobId: `process-${note._id}`, removeOnComplete: true, removeOnFail: true }
         );
+
+        await aiWorkerController.ensureRunning()
 
         res.status(201).json({
             message: 'Note created. AI is organizing your content.',
@@ -256,6 +259,8 @@ export const regenerateNote = async (req, res) => {
                 removeOnFail: true,
             }
         )
+
+        await aiWorkerController.ensureRunning()
 
         res.status(200).json({
             message: "Note regeneration started"

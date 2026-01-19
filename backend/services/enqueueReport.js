@@ -1,4 +1,5 @@
 import { getReportQueue } from "../queues/reportQueue.js"
+import { reportWorkerController } from "../workers/reportWorkerController.js"
 
 export async function enqueueReportJob(report) {
     if (report.status === "completed") return
@@ -24,4 +25,6 @@ export async function enqueueReportJob(report) {
             removeOnFail: false,
         }
     );
+
+    await reportWorkerController.ensureRunning()
 }
