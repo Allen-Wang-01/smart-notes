@@ -18,26 +18,35 @@ export const useNoteStream = (noteId?: string, enabled = false) => {
     const [isStreaming, setIsStreaming] = useState(false)
     const [content, setContent] = useState("")
     const [isDone, setIsDone] = useState(false)
+    const [renderDone, setRenderDone] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [isRendering, setIsRendering] = useState(false);
+
 
     const pendingBufferRef = useRef("")
 
     useEffect(() => {
-        if (!isStreaming) return;
+        if (!isRendering) return;
 
         const interval = setInterval(() => {
-            if (!pendingBufferRef.current) return;
+            const buffer = pendingBufferRef.current
+            if (!buffer.length) {
+                if (isDone) {
+                    setIsRendering(false)
+                    setRenderDone(true)
+                }
+                return
+            }
 
             const STEP = 5;
-            const next = pendingBufferRef.current.slice(0, STEP);
+            const next = buffer.slice(0, STEP);
 
-            pendingBufferRef.current =
-                pendingBufferRef.current.slice(STEP);
+            pendingBufferRef.current = buffer.slice(STEP);
 
             setContent(prev => prev + next);
         }, 30);
         return () => clearInterval(interval);
-    }, [isStreaming]);
+    }, [isRendering, isDone]);
 
 
     // Prevent duplicate SSE connections
@@ -57,6 +66,7 @@ export const useNoteStream = (noteId?: string, enabled = false) => {
         setContent("")
         setIsStreaming(true)
         setIsDone(false)
+        setRenderDone(false)
         setError(null)
 
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
@@ -76,6 +86,7 @@ export const useNoteStream = (noteId?: string, enabled = false) => {
                 // --------------------------
                 if (data.type === "chunk") {
                     pendingBufferRef.current += data.content || "";
+                    setIsRendering(true)
                     return;
                 }
                 // --------------------------
@@ -101,6 +112,10 @@ export const useNoteStream = (noteId?: string, enabled = false) => {
                 if (data.type === "error") {
                     setError(data.message || "Unknown error")
 
+                    pendingBufferRef.current = ""
+                    setIsRendering(false)
+                    setRenderDone(true)
+
                     if (!data.retry) {
                         // final failure
                         setIsStreaming(false)
@@ -116,6 +131,9 @@ export const useNoteStream = (noteId?: string, enabled = false) => {
 
         eventSource.onerror = () => {
             console.error("SSE connection lost");
+            pendingBufferRef.current = ""
+            setIsRendering(false)
+            setRenderDone(true)
             setTitle("Connection lost");
             setContent("Lost connection to server. Please refresh.");
             setError("Connection failed");
@@ -136,7 +154,7 @@ export const useNoteStream = (noteId?: string, enabled = false) => {
         title,
         content,
         isStreaming,
-        isDone,
+        renderDone,
         error,
     }
 }

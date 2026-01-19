@@ -21,7 +21,7 @@ const NotePage = () => {
         content: streamContent,
         isStreaming,
         error: streamError,
-        isDone,
+        renderDone,
     } = useNoteStream(id, shouldStream)
 
     // 3. Database request (only when NOT streaming)
@@ -38,13 +38,13 @@ const NotePage = () => {
     // When stream finishes → REFRESH DB
 
     useEffect(() => {
-        if (shouldStream && !isStreaming && isDone) {
+        if (shouldStream && !isStreaming && renderDone) {
             refetch() // refresh the note to sync categories / status / timestamp
             queryClient.invalidateQueries({ queryKey: ['notes'] }) // refresh sidebar
             // clean state so refresh does not trigger stream again
             navigate(`/note/${id}`, { replace: true })
         }
-    }, [shouldStream, isStreaming, isDone])
+    }, [shouldStream, isStreaming, renderDone])
 
     //Merge data
     const note = useMemo(() => {
