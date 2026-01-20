@@ -187,7 +187,7 @@ export const updateNote = async (req, res) => {
             { _id: id, userId: userId },
             { $set: updates },
             { new: true, runValidators: true }
-        ).select('title content category keywords createdAt')
+        ).select('title content category keywords createdAt updatedAt')
 
         if (!note) {
             return res.status(404).json({ error: 'Note not found' })
@@ -201,7 +201,8 @@ export const updateNote = async (req, res) => {
                 content: note.content,
                 category: note.category,
                 keywords: note.keywords || [],
-                date: note.createdAt,
+                created: note.createdAt,
+                updated: note.updatedAt,
             },
         })
     } catch (error) {

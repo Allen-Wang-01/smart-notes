@@ -220,9 +220,9 @@ const NoteEditor = ({ note, isStreaming, streamError }: NoteEditorProps) => {
             />
 
             <div className={styles.meta}>
-                <span>createAt: {new Date(note.created).toLocaleDateString()}</span>
+                <span>createAt: {new Date(note.created).toISOString().slice(0, 10)}</span>
                 {note.updated && (
-                    <span>Last Updated: {new Date(note.updated).toLocaleString()}</span>
+                    <span>Last Updated: {new Date(note.updated).toISOString().slice(0, 10)}</span>
                 )}
                 <span>category: {note.category}</span>
             </div>

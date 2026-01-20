@@ -60,9 +60,9 @@ const Sidebar = ({ closeSidebar, onNewNote }: SidebarProps) => {
 
     const { groupedNotes, sortedDates } = useMemo(() => {
         const allNotes: NoteListItem[] = data?.pages.flatMap((p) => p.notes) ?? [];
-
         const grouped = allNotes.reduce((acc, note) => {
-            const date = new Date(note.date).toLocaleDateString();
+            const ISODate = new Date(note.date).toISOString().slice(0, 10)
+            const date = new Date(ISODate).toLocaleDateString('en-GB');
             if (!acc[date]) acc[date] = [];
             acc[date].push(note);
             return acc;
