@@ -1,9 +1,8 @@
 import { useCallback, useMemo, useRef } from "react";
 import styles from "../styles/Sidebar.module.scss";
 import { useNavigate } from "react-router-dom";
-import { useAppDispatch } from "../redux/hooks";
-import { logout } from "../redux/slices/authSlice";
 import api from "../api/axios"
+import { handleAuthExpired } from "../utils/handleAuthExpired";
 import {
     useNotesInfiniteQuery,
     NoteListItem,
@@ -41,7 +40,6 @@ const Sidebar = ({ closeSidebar, onNewNote }: SidebarProps) => {
         [isFetchingNextPage, hasNextPage, fetchNextPage]
     )
     const navigate = useNavigate();
-    const dispatch = useAppDispatch();
 
 
     const handleLogout = async () => {
@@ -52,8 +50,8 @@ const Sidebar = ({ closeSidebar, onNewNote }: SidebarProps) => {
         } catch (err: any) {
             console.error('Logout failed:', err);
         } finally {
-            dispatch(logout());
             if (closeSidebar) closeSidebar();
+            handleAuthExpired()
             navigate('/login', { replace: true });
         }
     };

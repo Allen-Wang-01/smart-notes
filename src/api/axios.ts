@@ -1,6 +1,7 @@
 import axios from "axios";
 import { store } from "../redux/store";
 import { updateAccessToken } from "../redux/slices/authSlice";
+import { handleAuthExpired } from "../utils/handleAuthExpired";
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -34,6 +35,11 @@ api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config
+
+        if (originalRequest.url?.includes('/auth/refresh')) {
+            handleAuthExpired()
+            return Promise.reject(error)
+        }
 
         if (originalRequest.headers['X-Skip-Retry'] || originalRequest.url?.includes('/auth/logout')) {
             return Promise.reject(error);
