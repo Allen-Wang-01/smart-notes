@@ -11,7 +11,7 @@
 import cron from 'node-cron'
 import User from '../models/User.js'
 import { generateReportService } from '../services/reportService.js'
-import { getPreviousPeriodKey, getWeeklyKey } from '../utils/period.js'
+import { getWeeklyKey } from '../utils/period.js'
 
 // Schedule: Every Sunday at 00:00 JST (UTC+9)
 // 00:00 JST = 15:00 UTC previous day → use cron in UTC
@@ -31,7 +31,7 @@ export function startWeeklyReportJob() {
             let failCount = 0
 
             try {
-                const periodKey = getPreviousPeriodKey(getWeeklyKey())
+                const periodKey = getWeeklyKey()
                 console.log(`[Weekly Cron] Target period: ${periodKey}`)
 
                 const users = await User.find({ isActive: true }).select('_id')
