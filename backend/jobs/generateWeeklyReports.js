@@ -34,8 +34,8 @@ export function startWeeklyReportJob() {
                 const periodKey = getWeeklyKey()
                 console.log(`[Weekly Cron] Target period: ${periodKey}`)
 
-                const users = await User.find({ isActive: true }).select('_id')
-                console.log(`[Weekly Cron] Found ${users.length} active users`)
+                const users = await User.find().select('_id')
+                console.log(`[Weekly Cron] Found ${users.length} users`)
 
                 for (const user of users) {
                     try {
