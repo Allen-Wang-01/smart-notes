@@ -47,7 +47,7 @@ router.get('/weekly', async (req, res) => {
 router.get('/monthly', async (req, res) => {
     try {
         const { selectedMonthPeriod } = req.query
-        if (selectedMonthPeriod) {
+        if (!selectedMonthPeriod) {
             return res
                 .status(400)
                 .json({ error: 'Query params selectedMonthPeriod are required' })
