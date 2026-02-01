@@ -41,20 +41,26 @@ const ReportPage = () => {
         if (!availablePeriods) return
 
         const latest = viewType === 'weekly'
-            ? availablePeriods.periods.weekly.latest
-            : availablePeriods.periods.monthly.latest
+            ? availablePeriods.periods?.weekly?.latest
+            : availablePeriods.periods?.monthly?.latest
         setSelectedPeriod(latest)
 
-        if (!latest) {
-            setSelectedPeriod("");
-            return;
-        }
+        setSelectedPeriod(latest ?? "")
     }, [viewType, availablePeriods])
 
     const { data, isLoading } = useQuery<ReportData>({
         queryKey: ["report", viewType, selectedPeriod],
-        queryFn: () => api.get(`/reports/${viewType}`, { params: { selectedWeekPeriod: selectedPeriod } })
-            .then((res) => res.data),
+        queryFn: () => {
+            if (!selectedPeriod) {
+                return Promise.reject('No selectedPeriod')
+            }
+            return api.get(`/reports/${viewType}`, {
+                params:
+                    viewType === 'weekly'
+                        ? { selectedWeekPeriod: selectedPeriod }
+                        : { selectedMonthPeriod: selectedPeriod },
+            }).then((res) => res.data)
+        },
         enabled: !!selectedPeriod, // ensure selectedPeriod is ready
         retry: 1,
         staleTime: 1000 * 60 * 60 * 24,
@@ -108,8 +114,8 @@ const ReportPage = () => {
 
     // const generateTest = () => {
     //     api.post('/reports/generate', {
-    //         type: "weekly",
-    //         periodKey: "2025-W50"
+    //         type: "monthly",
+    //         periodKey: "2026-M01"
     //     })
     // }
 
@@ -117,12 +123,18 @@ const ReportPage = () => {
         <div className={styles.container}>
             <div className={styles.tabs}>
                 <button className={viewType === 'weekly' ? styles.active : ''}
-                    onClick={() => setViewType('weekly')}>
+                    onClick={() => {
+                        setSelectedPeriod("")
+                        setViewType('weekly')
+                    }}>
                     Weekly
                 </button>
 
                 <button className={viewType === 'monthly' ? styles.active : ''}
-                    onClick={() => setViewType('monthly')}
+                    onClick={() => {
+                        setSelectedPeriod("")
+                        setViewType('monthly')
+                    }}
                 >
                     Monthly
                 </button>
