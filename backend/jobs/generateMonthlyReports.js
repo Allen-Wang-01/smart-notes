@@ -11,7 +11,7 @@
 
 import cron from 'node-cron'
 import User from '../models/User.js'
-import { getPreviousPeriodKey, getMonthlyKey } from '../utils/period.js'
+import { getMonthlyKey } from '../utils/period.js'
 import { generateReportService } from '../services/reportService.js';
 
 // 1st of month, 00:05 JST → avoids conflict with weekly job
@@ -30,7 +30,7 @@ export function startMonthlyReportJob() {
             let failCount = 0
 
             try {
-                const periodKey = getPreviousPeriodKey(getMonthlyKey())
+                const periodKey = getMonthlyKey()
                 console.log(`[Monthly Cron] Target period: ${periodKey}`)
 
                 const users = await User.find().select('_id')
