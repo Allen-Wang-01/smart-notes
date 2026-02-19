@@ -38,11 +38,21 @@ const noteSchema = new mongoose.Schema(
         },
         previousContent: {
             type: String,
-            default: null, // used for rollback when regeneration fails
+            required: false, // used for rollback when regeneration fails
+            select: false, // do not return by default
+
         },
         previousTitle: {
             type: String,
-            default: null, // used for rollback title when regeneration fails
+            required: false, // used for rollback title when regeneration fails
+            select: false,
+
+        },
+        generationId: { // used for job id owns lock
+            type: String,
+            required: false,
+            index: true,
+            select: false,
         },
         status: {
             type: String,
