@@ -29,4 +29,15 @@ dist-ssr
 *.sln
 *.sw?
 
-
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
