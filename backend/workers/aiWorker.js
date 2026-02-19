@@ -6,7 +6,11 @@ import OpenAI from 'openai'
 import { sseManager } from '../utils/sseManager.js'
 import dotenv from 'dotenv'
 import { writeLog } from "../utils/log.js";
-import { decodeDoubleEscapedMarkdown } from "../utils/decodeContent.js";
+import { createHeartbeat } from "../services/heartbeatService.js";
+import { recoverStuckJobs } from "../services/recoveryService.js";
+import { lockNote } from "../services/noteLockService.js";
+import { saveAIResult } from "../services/noteSaveService.js";
+import { rollbackNote } from "../services/noteRollbackService.js";
 dotenv.config();
 const client = new OpenAI()
 
@@ -19,7 +23,8 @@ const client = new OpenAI()
 
 //Worker: Process note with OpenAI
 
-export function startAIWorker() {
+export async function startAIWorker() {
+    await recoverStuckJobs() //  only once on boot
     const worker = new Worker(
         'ai-processing',
         async (job) => {
@@ -28,39 +33,29 @@ export function startAIWorker() {
 
             writeLog(noteId, `JOB START at ${startTime}`)
 
-            // 1. Fetch note
-            const loadStart = Date.now()
-            const note = await Note.findById(noteId)
-            writeLog(noteId, `Loaded note in ${Date.now() - loadStart}ms`);
+            const heartbeat = createHeartbeat({ noteId, generationId })
 
-            if (!note) {
-                console.log(`Note ${noteId} does not exist, skipping`)
+            // 1. Atomically fetch + lock + backup
+            const loadStart = Date.now()
+            const generationId = job.id
+
+            const { success, note } = await lockNote(noteId, generationId)
+
+            if (!success) {
+                writeLog(noteId, "Skipped: already locked or completed")
                 return
             }
 
-            if (note.status === "completed") {
-                console.log(`Note ${noteId} already completed`);
+            writeLog(noteId, `Loaded + locked note in ${Date.now() - loadStart}ms`)
+
+            // If no note returned -> either not exist or already locked
+            if (!note) {
+                writeLog(noteId, "Skipped: note missing or already processing/completed");
+                console.log("Skipped: note missing or already processing/completed")
                 return;
             }
 
-            //2. Mark as processing (idempotent)
-            if (note.status !== "processing") {
-                await Note.findByIdAndUpdate(noteId, {
-                    status: "processing",
-                });
-                note.status = "processing";
-            }
-
-
-            // 3. Backup user input
-            await Note.findByIdAndUpdate(noteId, {
-                previousContent: note.content || note.rawContent,
-                previousTitle: note.title || "Untitled"
-            })
-
-            writeLog(noteId, "Previous content/title backed up")
-
-            // 4. Build prompt
+            // 2. Build prompt
             const prompt = buildPrompt(note);
             writeLog(noteId, `Prompt built. Length = ${prompt.length}`)
 
@@ -74,8 +69,9 @@ export function startAIWorker() {
             let apiStart = null;
             let firstToken = null;
 
-            // 5. Call OpenAI with streaming
+            // 3. Call OpenAI with streaming
             try {
+                heartbeat.start()
                 // OpenAI call
                 writeLog(noteId, "Calling OpenAI...");
                 apiStart = Date.now();
@@ -182,7 +178,7 @@ export function startAIWorker() {
                     }
                 }
 
-                // 6. Parse final JSON safely
+                // 4. Parse final JSON safely
                 let parsedMeta = {
                     title: "Untitled",
                     keywords: [],
@@ -202,20 +198,24 @@ export function startAIWorker() {
                     }
                 }
 
-                // 7. Save to DB
-                await Note.findByIdAndUpdate(noteId, {
-                    title: parsedMeta.title?.trim() || "Untitled",
-                    content: streamedContent.trim(),
-                    keywords: parsedMeta.keywords || [],
-                    summary: parsedMeta.summary || null,
-                    status: "completed",
-                    previousContent: null,
-                    previousTitle: null,
-                });
+                // 5. Save to DB
+                const success = await saveAIResult({
+                    noteId,
+                    generationId: job.id,
+                    content: streamedContent,
+                    title: parsedMeta.title,
+                    keywords: parsedMeta.keywords,
+                    summary: parsedMeta.summary,
+                })
+                // if no document was modified, then lock lost
+                if (!success) {
+                    writeLog(noteId, "write skipped: lock lost");
+                    return;
+                }
 
                 writeLog(noteId, "Saved note to database.")
 
-                // 8. Notify frontend
+                // 6. Notify frontend
                 sseManager.send(noteId, {
                     type: "done",
                     data: {
@@ -233,7 +233,7 @@ export function startAIWorker() {
 
             } catch (error) {
 
-                writeLog(noteId, `ERROR: ${err?.message}`)
+                writeLog(noteId, `ERROR: ${error?.message}`)
 
                 // Mark as failed but retryable
                 await Note.findByIdAndUpdate(noteId, { status: "retrying" })
@@ -245,6 +245,8 @@ export function startAIWorker() {
                 })
                 //throw error, BullMQ will handle retry
                 throw error
+            } finally {
+                heartbeat.stop()
             }
         },
 
@@ -277,29 +279,16 @@ export function startAIWorker() {
 
         // All retry attempts failed → perform rollback
         try {
-            const note = await Note.findById(noteId).lean()
+            const success = await rollbackNote({
+                noteId,
+                generationId: job.id
+            })
 
-            if (!note) {
-                console.error("Note not found during rollback:", noteId);
+
+            if (!success) {
+                console.warn(`Rollback skipped for note ${noteId}`);
                 return;
             }
-
-            await Note.updateOne(
-                { _id: noteId },
-                {
-                    $set: {
-                        title: note.previousTitle || "Untitled",
-                        content: note.previousContent || note.rawContent || "[content lost]",
-                        keywords: [],
-                        summary: null,
-                        status: "failed", //final failure
-                    },
-                    $unset: {
-                        previousContent: "",
-                        previousTitle: "",
-                    },
-                }
-            )
 
             sseManager.send(noteId, {
                 type: "error",
