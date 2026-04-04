@@ -57,6 +57,35 @@ function getMondayOfISOWeek(date) {
 }
 
 /**
+ * Get the ISO week-based year for a given date.
+ *
+ * ⚠️ Note:
+ * ISO week year is NOT always the same as the calendar year.
+ * For example:
+ * - 2026-01-01 may belong to ISO week 2025-W53
+ * - 2020-12-31 may belong to ISO week 2020-W53
+ *
+ * ISO week rules:
+ * - Week starts on Monday
+ * - Week 1 is the week that contains the first Thursday of the year
+ *
+ * This function shifts the date to the nearest Thursday,
+ * then returns that year's value as the ISO week year.
+ *
+ * @param {Date|string|number} date - Input date
+ * @returns {number} ISO week year (e.g., 2025, 2026)
+ */
+function getISOWeekYear(date) {
+    const d = new Date(date)
+    d.setHours(0, 0, 0, 0)
+
+    // Shift to nearest Thursday (ISO week is defined by Thursday)
+    d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7))
+
+    return d.getFullYear()
+}
+
+/**
  * Generate weekly period key: "YYYY-Www"
  * e.g., "2025-W11"
  *
@@ -66,7 +95,7 @@ function getMondayOfISOWeek(date) {
 
 export function getWeeklyKey(date = new Date()) {
     const d = new Date(date)
-    const year = d.getFullYear()
+    const year = getISOWeekYear(d)
     const week = getISOWeek(d).toString().padStart(2, '0')
     return `${year}-W${week}`
 }
