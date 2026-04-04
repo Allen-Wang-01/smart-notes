@@ -11,12 +11,12 @@
 import cron from 'node-cron'
 import User from '../models/User.js'
 import { generateReportService } from '../services/reportService.js'
-import { getWeeklyKey } from '../utils/period.js'
+import { getPreviousPeriodKey, getWeeklyKey } from '../utils/period.js'
 
 // Schedule: Every Sunday at 00:00 JST (UTC+9)
 // 00:00 JST = 15:00 UTC previous day → use cron in UTC
 // But we set timezone to 'Asia/Tokyo' for clarity
-const JOB_CRON = '0 0 * * 0'; // 00:00 every Sunday
+const JOB_CRON = '0 0 * * 1'; // 00:00 every Monday
 
 console.log('[Cron] generateMonthlyReports module loaded')
 console.log('[Cron] Scheduling weekly report job:', JOB_CRON, 'in Asia/Tokyo');
@@ -31,7 +31,7 @@ export function startWeeklyReportJob() {
             let failCount = 0
 
             try {
-                const periodKey = getWeeklyKey()
+                const periodKey = getPreviousPeriodKey(getWeeklyKey())
                 console.log(`[Weekly Cron] Target period: ${periodKey}`)
 
                 const users = await User.find().select('_id')
