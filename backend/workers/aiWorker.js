@@ -11,6 +11,7 @@ import { recoverStuckJobs } from "../services/recoveryService.js";
 import { lockNote } from "../services/noteLockService.js";
 import { saveAIResult } from "../services/noteSaveService.js";
 import { rollbackNote } from "../services/noteRollbackService.js";
+import { isValidAnalysis } from "../utils/validators.js";
 dotenv.config();
 const client = new OpenAI()
 
