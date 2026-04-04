@@ -1,5 +1,44 @@
 import mongoose from 'mongoose'
 
+const AnalysisSchema = new mongoose.Schema(
+    {
+        emotionPrimary: {
+            type: String,
+            enum: ["joy", "anxiety", "calm", "stress", "sad", "anger"],
+            required: false,
+        },
+        emotionIntensity: {
+            type: Number,
+            min: 0,
+            max: 1,
+            required: false,
+        },
+        energyLevel: {
+            type: Number,
+            min: 0,
+            max: 1,
+            required: false,
+        },
+        focusLevel: {
+            type: Number,
+            min: 0,
+            max: 1,
+            required: false,
+        },
+        topics: {
+            type: [String],
+            required: false,
+        },
+        confidence: {
+            type: Number,
+            min: 0,
+            max: 1,
+            required: false,
+        },
+    },
+    { _id: false }
+);
+
 const noteSchema = new mongoose.Schema(
     {
         userId: {
@@ -58,6 +97,11 @@ const noteSchema = new mongoose.Schema(
             type: String,
             enum: ["pending", "processing", "retrying", "completed", "failed"],
             default: "pending",
+        },
+        analysis: {
+            type: AnalysisSchema,
+            required: false,
+            default: null,
         },
     },
     {
