@@ -1,6 +1,13 @@
-import Note from "../models/Note";
+import Note from "../models/Note.js";
 
-export async function recoverStuckJobs({ timeoutMs = 30000 }) {
+/**
+ * Recover stuck AI jobs that have not sent heartbeat within timeout.
+ *
+ * @param {Object} [options]
+ * @param {number} [options.timeoutMs=30000] - Timeout in milliseconds
+ * @returns {number} Number of recovered jobs
+ */
+export async function recoverStuckJobs({ timeoutMs = 30000 } = {}) {
     const timeoutDate = new Date(Date.now() - timeoutMs)
 
     try {

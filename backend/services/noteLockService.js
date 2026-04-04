@@ -1,4 +1,4 @@
-import Note from "../models/Note";
+import Note from "../models/Note.js";
 
 /**
  * Atomic operation:
@@ -28,7 +28,7 @@ export async function lockNote(noteId, generationId) {
                     },
                     // backup title safely
                     previousTitle: {
-                        $ifNull: ["title", "Untitled"]
+                        $ifNull: ["$title", "Untitled"]
                     }
                 }
             }
@@ -37,11 +37,11 @@ export async function lockNote(noteId, generationId) {
     );
 
     if (!note) {
-        return { success: false }
+        return { lockResult: false }
     }
 
     return {
-        success: true,
+        lockResult: true,
         note,
     }
 }

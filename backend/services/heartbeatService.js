@@ -1,4 +1,4 @@
-import Note from "../models/Note";
+import Note from "../models/Note.js";
 
 export function createHeartbeat({ noteId, generationId, intervalMs = 5000 }) {
     let timer = null

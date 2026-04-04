@@ -30,7 +30,7 @@ export function createWorkerController({
         log("Starting worker")
 
         try {
-            worker = startWorker()
+            worker = await startWorker()
             touch()
             attachWorkerLifecycle(worker)
             startIdleWatcher()
