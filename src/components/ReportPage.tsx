@@ -8,6 +8,7 @@ import ReportSummary from "./ReportSummary";
 import ReportPoetic from "./ReportPoetic";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { formatPeriodLabel } from "../utils/formatPeriodLabel";
 
 interface ReportData {
     report?: any;
@@ -87,42 +88,32 @@ const ReportPage = () => {
         }
     }
 
+    // Boundary checks for navigation
+    const earliest = viewType === 'weekly'
+        ? availablePeriods?.periods?.weekly?.earliest
+        : availablePeriods?.periods?.monthly?.earliest
+
+    const latest = viewType === 'weekly'
+        ? availablePeriods?.periods?.weekly?.latest
+        : availablePeriods?.periods?.monthly?.latest
+
+    const isAtEarliest = !!earliest && !!selectedPeriod && selectedPeriod <= earliest
+    const isAtLatest = !!latest && !!selectedPeriod && selectedPeriod >= latest
+
     const goPrev = () => {
-        if (!availablePeriods || !selectedPeriod) return
-
-        const prev = getPreviousPeriodKey(selectedPeriod)
-        const earliest =
-            viewType === 'weekly'
-                ? availablePeriods.periods.weekly.earliest
-                : availablePeriods.periods.monthly.earliest
-
-        if (earliest && prev < earliest) {
-            toast.success('You’ve reached the earliest available period.')
-            return
-        }
-        setSelectedPeriod(prev)
+        if (!selectedPeriod || isAtEarliest) return
+        setSelectedPeriod(getPreviousPeriodKey(selectedPeriod))
     }
 
     const goNext = () => {
-        if (!availablePeriods || !selectedPeriod) return
-
-        const next = getNextPeriodKey(selectedPeriod)
-        const latest =
-            viewType === 'weekly'
-                ? availablePeriods.periods.weekly.latest
-                : availablePeriods.periods.monthly.latest
-
-        if (latest && next > latest) {
-            toast.success("You’ve reached the latest available period.")
-            return
-        }
-        setSelectedPeriod(next)
+        if (!selectedPeriod || isAtLatest) return
+        setSelectedPeriod(getNextPeriodKey(selectedPeriod))
     }
 
     // const generateTest = () => {
     //     api.post('/reports/generate', {
-    //         type: "monthly",
-    //         periodKey: "2026-M01"
+    //         type: "weekly",
+    //         periodKey: "2026-W13"
     //     })
     // }
 
@@ -157,16 +148,16 @@ const ReportPage = () => {
                     <button
                         className={styles.navButton}
                         onClick={goPrev}
-                        disabled={isLoading}>
+                        disabled={isLoading || isAtEarliest}>
                         Previous
                     </button>
                     <span className={styles.currentPeriod}>
-                        {selectedPeriod.replace('-', " ")}
+                        {formatPeriodLabel(selectedPeriod)}
                     </span>
                     <button
                         className={styles.navButton}
                         onClick={goNext}
-                        disabled={isLoading}
+                        disabled={isLoading || isAtLatest}
                     >
                         Next
                     </button>
