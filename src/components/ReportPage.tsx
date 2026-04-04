@@ -48,6 +48,9 @@ const ReportPage = () => {
         setSelectedPeriod(latest ?? "")
     }, [viewType, availablePeriods])
 
+    const isInProgress = (status?: string) =>
+        status === 'pending' || status === 'processing'
+
     const { data, isLoading } = useQuery<ReportData>({
         queryKey: ["report", viewType, selectedPeriod],
         queryFn: () => {
@@ -64,6 +67,10 @@ const ReportPage = () => {
         enabled: !!selectedPeriod, // ensure selectedPeriod is ready
         retry: 1,
         staleTime: 1000 * 60 * 60 * 24,
+        // poll every 5s while report is pending/processing 
+        // so user doesn't need to manually refresh
+        refetchInterval: (query) =>
+            isInProgress(query.state.data?.report?.status) ? 5000 : false,
     })
 
     const report = data?.report
@@ -145,7 +152,7 @@ const ReportPage = () => {
             </button> */}
 
             {/* period navigator */}
-            {report && (
+            {selectedPeriod && (
                 <div className={styles.navigator}>
                     <button
                         className={styles.navButton}
@@ -174,16 +181,16 @@ const ReportPage = () => {
             )}
 
             {/* Pending / processing */}
-            {report?.status === 'pending' || report?.status === 'processing' ? (
+            {isLoading && isInProgress(report?.status) && (
                 <div className={styles.placeholder}>
                     <p>Generating your {viewType} report...</p>
-                    <p>Please check back in a moment.</p>
+                    <p>This page will update automatically.</p>
                 </div>
-            ) : null}
+            )}
 
 
             {/* Failed */}
-            {report?.status === 'failed' && (
+            {!isLoading && report?.status === 'failed' && (
                 <div className={styles.empty}>
                     <p>Report generation failed.</p>
                     <p>You may retry later.</p>
@@ -198,16 +205,15 @@ const ReportPage = () => {
             )}
 
             {/* No report */}
-            {!report && (
+            {!isLoading && !report && (
                 <div className={styles.empty}>
                     <p>No report for this period.</p>
-                    <p>Start writing notes to see insights!</p>
-                    <p>Report will be shown when it's ready!</p>
+                    <p>Start writing notes to see insights here.</p>
                 </div>
             )}
 
             {/* Completed */}
-            {report && report.status === 'completed' && (
+            {!isLoading && report?.status === 'completed' && (
                 <>
                     <ReportHeader type={viewType} period={report.periodKey} />
                     <ReportStats stats={report.stats} />
