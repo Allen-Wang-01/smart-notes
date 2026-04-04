@@ -8,6 +8,7 @@ import noteRouter from './routes/note.js'
 import reportRoutes from './routes/reports.js'
 import { apiRateLimiter, authRateLimiter } from './middleware/rateLimiters.js'
 import { env } from './config/env.js'
+import { checkConnection } from './config/postgres.js'
 dotenv.config();
 
 const app = express();
@@ -45,7 +46,7 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
-
+    await checkConnection() // check postgreSQL connection
     if (process.env.NODE_ENV === 'production') {
         const { startWeeklyReportJob } = await import('./jobs/generateWeeklyReports.js');
         const { startMonthlyReportJob } = await import('./jobs/generateMonthlyReports.js');
