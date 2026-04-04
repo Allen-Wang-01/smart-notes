@@ -12,6 +12,7 @@ export async function saveAIResult({
     title,
     keywords,
     summary,
+    analysis,
 }) {
     const result = await Note.updateOne(
         {
@@ -26,6 +27,7 @@ export async function saveAIResult({
                     content: content.trim(),
                     keywords: keywords || [],
                     summary: summary || null,
+                    ...(analysis && { analysis }),
                     status: "completed",
                 },
             },

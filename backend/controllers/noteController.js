@@ -143,7 +143,7 @@ export const getNoteById = async (req, res) => {
 
     try {
         const note = await Note.findOne({ _id: id, userId: userId })
-            .select('title content rawContent category keywords createdAt updatedAt status')
+            .select('title content rawContent category keywords createdAt updatedAt status analysis')
             .lean()
 
         if (!note) {
@@ -161,6 +161,7 @@ export const getNoteById = async (req, res) => {
                 created: note.createdAt,
                 updated: note.updatedAt,
                 status: note.status,
+                analysis: note.analysis,
             },
         })
     } catch (error) {
@@ -250,6 +251,8 @@ export const regenerateNote = async (req, res) => {
             summary: null,
         })
 
+        await aiWorkerController.ensureRunning()
+
         //add a new job to the AI queue
         await aiQueue.add(
             "process-note",
@@ -261,13 +264,12 @@ export const regenerateNote = async (req, res) => {
             }
         )
 
-        await aiWorkerController.ensureRunning()
-
         res.status(200).json({
             message: "Note regeneration started"
         })
     } catch (error) {
         console.error("Regenerate note error: ", error)
+        await Note.findByIdAndUpdate(id, { status: "failed" }).catch(() => { })
         res.status(500).json({ error: "Failed to regenerate note" })
     }
 }
