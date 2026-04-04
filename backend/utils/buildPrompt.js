@@ -58,10 +58,13 @@ The output consists of TWO sections:
 2) Metadata for system use only (not streamed)
 
 IMPORTANT RULES FOR NOTE CONTENT:
+- First, write the note content (markdown)
+- Then, append the metadata block at the very end
 - The note content is FINAL end-user content
 - Do NOT include protocol descriptions, system markers, or process explanations
 - Do NOT include words such as "PART", "PHASE", "SECTION", "METADATA", or references to output structure
 - Do NOT include JSON or metadata in the note content
+- Do not output <METADATA> anywhere else. It must appear exactly once, at the end
 
 ==========================
 NOTE CONTENT (STREAMED TO USER)
@@ -85,15 +88,34 @@ After the note content is complete, output the following exactly once:
 {
   "title": "3–8 word concise title",
   "keywords": ["3 to 6 lowercase keywords"],
-  "summary": "1–2 concise sentences, maximum ${SUMMARY_MAX_WORDS} words"
+  "summary": "1–2 concise sentences, maximum ${SUMMARY_MAX_WORDS} words",
+  "analysis": {
+    "emotionPrimary": "one of: joy | anxiety | calm | stress | sad | anger",
+    "emotionIntensity": 0.0,
+    "energyLevel": 0.0,
+    "focusLevel": 0.0,
+    "topics": ["2 to 4 topic strings"],
+    "confidence": 0.0
+  }
 }
 </METADATA>
 
-Rules:
+Metadata rules:
 - The metadata must be valid JSON
 - Do NOT repeat the note content inside the metadata
 - Do NOT output anything outside the <METADATA> block
 - Do NOT add extra commentary or formatting
+
+Analysis rules:
+- The note category is: ${note.category} — use this as context when assessing emotion and energy
+- emotionPrimary: the single most dominant emotion reflected in the writing
+- emotionIntensity: how strongly that emotion is expressed (0.0–1.0)
+- energyLevel: the writer's apparent energy or vitality as reflected in the writing (0.0–1.0)
+- focusLevel: how focused or concentrated the writing feels (0.0–1.0)
+- topics: 2–4 short strings describing the main subjects discussed
+- confidence: your overall confidence in this analysis (0.0–1.0)
+- All numeric values must be floats between 0.0 and 1.0
+- Do NOT use booleans (true/false) for numeric fields
 
 ==========================
 CATEGORY-SPECIFIC INSTRUCTION
