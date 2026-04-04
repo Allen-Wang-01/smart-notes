@@ -5,7 +5,7 @@ import buildPrompt from '../utils/buildPrompt.js'
 import OpenAI from 'openai'
 import { sseManager } from '../utils/sseManager.js'
 import dotenv from 'dotenv'
-import { writeLog } from "../utils/log.js";
+import { createAIJobLogger, aiWorkerLogger } from "../utils/logger.js";
 import { createHeartbeat } from "../services/heartbeatService.js";
 import { recoverStuckJobs } from "../services/recoveryService.js";
 import { lockNote } from "../services/noteLockService.js";
@@ -32,33 +32,33 @@ export async function startAIWorker() {
             const { noteId } = job.data
             const startTime = Date.now()
 
-            writeLog(noteId, `JOB START at ${startTime}`)
+            const log = createAIJobLogger(job)
+            log.info('job_started', { startTime })
 
+            const generationId = job.id
             const heartbeat = createHeartbeat({ noteId, generationId })
 
             // 1. Atomically fetch + lock + backup
             const loadStart = Date.now()
-            const generationId = job.id
 
-            const { success, note } = await lockNote(noteId, generationId)
+            const { lockResult, note } = await lockNote(noteId, generationId)
 
-            if (!success) {
-                writeLog(noteId, "Skipped: already locked or completed")
+            if (!lockResult) {
+                log.info('job_skipped', { reason: 'already locked or completed' })
                 return
             }
 
-            writeLog(noteId, `Loaded + locked note in ${Date.now() - loadStart}ms`)
+            log.info('note_locked', { durationMs: Date.now() - loadStart })
 
             // If no note returned -> either not exist or already locked
             if (!note) {
-                writeLog(noteId, "Skipped: note missing or already processing/completed");
-                console.log("Skipped: note missing or already processing/completed")
+                log.info('job_skipped', { reason: 'note missing' })
                 return;
             }
 
             // 2. Build prompt
             const prompt = buildPrompt(note);
-            writeLog(noteId, `Prompt built. Length = ${prompt.length}`)
+            log.info('prompt_built', { promptLength: prompt.length })
 
             // --- STREAM CONTROL ---
             let streamedContent = "";  //<CONTENT> part
@@ -74,7 +74,7 @@ export async function startAIWorker() {
             try {
                 heartbeat.start()
                 // OpenAI call
-                writeLog(noteId, "Calling OpenAI...");
+                log.info('llm_started')
                 apiStart = Date.now();
                 // Use Responses API with streaming and JSON
                 const stream = await client.responses.create({
@@ -90,25 +90,13 @@ export async function startAIWorker() {
                     store: false,
                 })
 
-                writeLog(
-                    noteId,
-                    `OpenAI request accepted in ${Date.now() - apiStart}ms`
-                );
+                log.info('llm_request_accepted', { durationMs: Date.now() - apiStart })
 
                 for await (const chunk of stream) {
-                    const now = Date.now();
-                    writeLog(
-                        noteId,
-                        `CHUNK: ${chunk.type} @ ${now} (${now - apiStart}ms after request)`
-                    );
-
                     // First token
                     if (!firstToken && chunk.type === "response.output_text.delta") {
-                        firstToken = now;
-                        writeLog(
-                            noteId,
-                            `FIRST TOKEN after ${firstToken - apiStart}ms`
-                        );
+                        firstToken = Date.now()
+                        log.info('llm_first_token', { durationMs: firstToken - apiStart })
                     }
 
                     // ---- 1. delta chunk: response.output_text.delta ----
@@ -171,10 +159,12 @@ export async function startAIWorker() {
                         if (chunk.text) {
                             metadataBuffer += chunk.text
                         }
-                        writeLog(
-                            noteId,
-                            `STREAM DONE. Total stream chars = ${streamedContent.length}`
-                        );
+                        log.debug('raw_stream_dump', {
+                            contentBuffer,
+                            metadataBuffer,
+                            mode,
+                        })
+                        log.info('llm_stream_done', { streamedChars: streamedContent.length })
                         break;
                     }
                 }
@@ -184,6 +174,7 @@ export async function startAIWorker() {
                     title: "Untitled",
                     keywords: [],
                     summary: null,
+                    analysis: null,
                 }
 
                 if (metadataBuffer) {
@@ -193,28 +184,36 @@ export async function startAIWorker() {
                             .split("</METADATA>")[0]
                             .trim();
 
-                        parsedMeta = JSON.parse(raw);
+                        const parsed = JSON.parse(raw);
+                        parsedMeta = {
+                            title: parsed.title ?? "Untitled",
+                            keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
+                            summary: parsed.summary ?? null,
+                            analysis: isValidAnalysis(parsed.analysis) ? parsed.analysis : null,
+                        }
+                        log.info('metadata_parsed', { title: parsedMeta.title })
                     } catch (e) {
-                        writeLog(noteId, `METADATA PARSE ERROR: ${e.message}`);
+                        log.warn('metadata_parse_failed', { error: e.message })
                     }
                 }
 
                 // 5. Save to DB
-                const success = await saveAIResult({
+                const saveSuccess = await saveAIResult({
                     noteId,
                     generationId: job.id,
                     content: streamedContent,
                     title: parsedMeta.title,
                     keywords: parsedMeta.keywords,
                     summary: parsedMeta.summary,
+                    analysis: parsedMeta.analysis,
                 })
                 // if no document was modified, then lock lost
-                if (!success) {
-                    writeLog(noteId, "write skipped: lock lost");
+                if (!saveSuccess) {
+                    log.warn('save_skipped', { reason: 'lock lost' })
                     return;
                 }
 
-                writeLog(noteId, "Saved note to database.")
+                log.info('note_saved')
 
                 // 6. Notify frontend
                 sseManager.send(noteId, {
@@ -226,24 +225,13 @@ export async function startAIWorker() {
                     },
                 });
 
-                writeLog(
-                    noteId,
-                    `JOB FINISHED in ${Date.now() - startTime}ms (First token: ${firstToken - apiStart
-                    }ms)`
-                )
+                log.info('job_completed', {
+                    totalMs: Date.now() - startTime,
+                    firstTokenMs: firstToken ? firstToken - apiStart : null,
+                })
 
             } catch (error) {
-
-                writeLog(noteId, `ERROR: ${error?.message}`)
-
-                // Mark as failed but retryable
-                await Note.findByIdAndUpdate(noteId, { status: "retrying" })
-
-                sseManager.send(noteId, {
-                    type: "error",
-                    message: `Processing failed, retrying... (${job.attemptsMade}/3)`,
-                    retry: true,
-                })
+                log.error('job_failed', { error: error.message, stack: error.stack })
                 //throw error, BullMQ will handle retry
                 throw error
             } finally {
@@ -259,6 +247,10 @@ export async function startAIWorker() {
     )
 
     worker.on('completed', (job) => {
+        aiWorkerLogger.info('worker_job_completed', {
+            jobId: String(job.id),
+            noteId: String(job.data.noteId),
+        })
         console.log(`Job ${job.id} completed successfully for note ${job.data.noteId}`);
     });
 
@@ -270,11 +262,22 @@ export async function startAIWorker() {
         const attempts = job.opts.attempts || 1
         const attempt = job.attemptsMade
 
-        console.error(`AI job failed for note ${noteId} (attempt ${attempt}/${attempts}): ${err.message}`)
+        aiWorkerLogger.error('worker_job_failed', {
+            jobId: String(job?.id),
+            noteId,
+            attempt,
+            attempts,
+            error: err.message,
+        })
 
         // Not final attempt → do nothing
         if (attempt < attempts) {
             await Note.findByIdAndUpdate(noteId, { status: "retrying" })
+            sseManager.send(noteId, {
+                type: "error",
+                message: `Processing failed, retrying... (${job.attemptsMade}/3)`,
+                retry: true,
+            })
             return
         }
 
@@ -287,7 +290,7 @@ export async function startAIWorker() {
 
 
             if (!success) {
-                console.warn(`Rollback skipped for note ${noteId}`);
+                aiWorkerLogger.warn('rollback_skipped', { noteId })
                 return;
             }
 
@@ -297,10 +300,10 @@ export async function startAIWorker() {
                 retry: false,
             });
         } catch (rollbackErr) {
-            console.error("Critical: rollback also failed!", rollbackErr);
+            aiWorkerLogger.error('rollback_failed', { noteId, error: rollbackErr.message })
         }
     })
 
-    console.log('[Worker] AI worker created');
+    aiWorkerLogger.info('worker_started')
     return worker
 }
