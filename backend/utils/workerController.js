@@ -11,6 +11,7 @@ export function createWorkerController({
     let idleTimer = null
     let lastActiveAt = 0
     let starting = false
+    let activeJobCount = 0
 
     function log(...args) {
         console.log(`[WorkerController: ${name}]`, ...args);
@@ -46,9 +47,18 @@ export function createWorkerController({
 
     function attachWorkerLifecycle(workerInstance) {
         // any job activity refreshes idle timer
-        workerInstance.on("active", touch)
-        workerInstance.on("completed", touch)
-        workerInstance.on("failed", touch)
+        workerInstance.on("active", () => {
+            activeJobCount++
+            touch()
+        })
+        workerInstance.on("completed", () => {
+            activeJobCount = Math.max(0, activeJobCount - 1)
+            touch()
+        })
+        workerInstance.on("failed", () => {
+            activeJobCount = Math.max(0, activeJobCount - 1)
+            touch()
+        })
         workerInstance.on("error", (err) => {
             log("Worker error: ", err)
         })
@@ -62,6 +72,11 @@ export function createWorkerController({
                 if (!worker) return
                 const idleFor = Date.now() - lastActiveAt
                 if (idleFor < idleTimeout) return
+
+                if (activeJobCount > 0) {
+                    touch()
+                    return
+                }
 
                 log(`Idle for ${idleFor}ms, shutting down worker...`)
                 await shutdown()
@@ -78,6 +93,10 @@ export function createWorkerController({
 
     async function shutdown() {
         if (!worker) return
+        if (activeJobCount > 0) {
+            log(`Shutdown skipped: ${activeJobCount} job(s) still active`)
+            return
+        }
         log("Closing worker...")
         try {
             await worker.close() // shutdown
@@ -86,6 +105,7 @@ export function createWorkerController({
         } finally {
             worker = null
             lastActiveAt = 0
+            idleTimer = null
             log("worker closed")
         }
     }
