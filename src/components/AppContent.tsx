@@ -44,9 +44,6 @@ const AppContent = () => {
                 // Don't navigate here. ProtectedRoute will handle redirects
                 // for protected pages; public pages (/, /login, /register) stay accessible.
                 console.log('Refresh failed:', err);
-                if (isMounted && !['/login', '/register'].includes(location.pathname)) {
-                    navigate('/login', { replace: true });
-                }
             } finally {
                 if (isMounted) {
                     dispatch(setLoading(false))
