@@ -5,7 +5,8 @@ import { useNavigate } from "react-router-dom";
 
 interface CreateNoteData {
     rawContent: string;
-    category?: 'meeting' | 'study' | 'interview'
+    sourceType: "authored" | "saved";
+    description?: string;
 }
 
 interface CreateNoteResponse {
@@ -13,7 +14,8 @@ interface CreateNoteResponse {
     note: {
         id: string;
         title: string;
-        category: string;
+        sourceType: string;
+        description?: string;
         date: string;
         status: "pending" | "processing" | "retrying" | "completed" | "failed";
     }
