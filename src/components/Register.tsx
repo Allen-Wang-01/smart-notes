@@ -28,7 +28,7 @@ const Register: React.FC = () => {
 
     useEffect(() => {
         if (!isLoading && isAuthenticated) {
-            navigate('/', { replace: true });
+            navigate('/home', { replace: true });
         }
     }, [isAuthenticated, navigate, isLoading,]);
 
@@ -73,7 +73,7 @@ const Register: React.FC = () => {
                 // registration successful and login automatically 
                 const { user, accessToken } = response.data
                 dispatch(login({ user, accessToken }))
-                navigate('/')
+                navigate('/home')
             } catch (error: any) {
                 const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.'
                 setErrors({

@@ -12,6 +12,7 @@ import Register from './Register';
 import NotePage from './NotePage';
 import ProtectedRoute from './ProtectedRoute';
 import styles from '../styles/Main.module.scss'
+import LandingPage from '../pages/Landing/LandingPage'
 
 
 
@@ -38,6 +39,9 @@ const AppContent = () => {
                     dispatch(login({ accessToken: data.accessToken, user: data.user }));
                 }
             } catch (err) {
+                // Refresh failed — user is not logged in.
+                // Don't navigate here. ProtectedRoute will handle redirects
+                // for protected pages; public pages (/, /login, /register) stay accessible.
                 console.log('Refresh failed:', err);
                 if (isMounted && !['/login', '/register'].includes(location.pathname)) {
                     navigate('/login', { replace: true });
@@ -58,7 +62,8 @@ const AppContent = () => {
 
     const hideSidebar = !isAuthenticated ||
         location.pathname === '/login' ||
-        location.pathname === '/register'
+        location.pathname === '/register' ||
+        location.pathname === "/"
 
 
     const toggleSidebar = () => {
@@ -97,8 +102,9 @@ const AppContent = () => {
                 <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/" element={<LandingPage />} />
                     <Route
-                        path="/"
+                        path="/home"
                         element={
                             <ProtectedRoute>
                                 <MainContent />
@@ -121,7 +127,7 @@ const AppContent = () => {
                             </ProtectedRoute>
                         }
                     />
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    <Route path="*" element={<Navigate to="/home" replace />} />
                 </Routes>
             </div>
         </div>

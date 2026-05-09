@@ -18,7 +18,7 @@ const Login: React.FC = () => {
 
     useEffect(() => {
         if (!isLoading && isAuthenticated) {
-            navigate('/', { replace: true });
+            navigate('/home', { replace: true });
         }
     }, [isAuthenticated, navigate, isLoading,]);
 
@@ -48,7 +48,7 @@ const Login: React.FC = () => {
                 })
                 const { user, accessToken } = response.data
                 dispatch(login({ user, accessToken }))
-                navigate('/')
+                navigate('/home')
             } catch (error: any) {
                 const errorMessage = error.response?.data?.message || 'Login failed. Please try again'
                 setErrors({ server: errorMessage })
@@ -62,7 +62,7 @@ const Login: React.FC = () => {
             const response = await api.post(`/auth/demo-login`)
             const { user, accessToken } = response.data
             dispatch(login({ user, accessToken }))
-            navigate('/')
+            navigate('/home')
         } catch (error: any) {
             const errorMessage = error.response?.data?.message || 'Demo Login failed. Please try again'
             setErrors({ server: errorMessage })
