@@ -1,220 +1,388 @@
-.container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #fdfbfb 0%, #f5f7fa 100%);
-    min-height: 100vh;
-    color: #333;
-}
+@use './token' as t;
 
-.button {
-    appearance: none;
-    border: 0.0625rem solid #e5e7eb; // 1px
-    background: #ffffff;
-    color: #111827;
+// ---- Page shell ------------------------------------------------------------
+.page {
+    width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+    padding: 32px 20px 56px;
+    font-family: t.$font-body;
+    color: t.$color-ink;
 
-    padding: 0.5rem 0.875rem; // 8px 14px
-    border-radius: 0.5rem; // 8px
-
-    font-size: 0.875rem; // 14px
-    font-weight: 500;
-
-    cursor: pointer;
-    transition: background-color 0.15s ease,
-        box-shadow 0.15s ease,
-        transform 0.15s ease;
-}
-
-.button:hover:not(:disabled) {
-    background: #f9fafb;
-}
-
-.button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-
-.loading {
-    text-align: center;
-    padding: 4rem 1rem;
-    color: #777;
-    font-size: 1.1rem;
-
-    .spinner {
-        width: 48px;
-        height: 48px;
-        border: 4px solid #e3e3e3;
-        border-top: 4px solid #89cff9;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 1.5rem;
+    @media (max-width: 480px) {
+        padding: 20px 14px 40px;
     }
 }
 
-.tabs {
+.shell {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+}
+
+// ---- Period navigator ------------------------------------------------------
+.navigator {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0 28px;
+    margin-bottom: 40px;
+    border-bottom: 1px solid rgba(217, 199, 166, 0.4);
+
+    @media (max-width: 480px) {
+        padding: 4px 0 20px;
+        margin-bottom: 28px;
+    }
+}
+
+.navButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px 6px 8px;
+    background: transparent;
+    border: 0;
+    color: t.$color-ink-soft;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 999px;
+    transition:
+        color 200ms t.$ease-soft,
+        background 200ms t.$ease-soft,
+        opacity 200ms t.$ease-soft;
+
+    &:hover:not(:disabled) {
+        background: t.$color-surface-sunk;
+        color: t.$color-ink;
+    }
+
+    &:active:not(:disabled) {
+        background: t.$color-accent-soft;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.4;
+    }
+
+    @media (max-width: 480px) {
+        padding: 8px 10px;
+    }
+}
+
+.navButtonRight {
+    padding: 6px 8px 6px 12px;
+}
+
+.navLabel {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
+}
+
+.navCaption {
+    display: block;
+    font-family: t.$font-display;
+    font-style: italic;
+    font-size: 13px;
+    color: t.$color-ink-mute;
+    letter-spacing: 0.04em;
+
+    @media (max-width: 480px) {
+        font-size: 12px;
+    }
+}
+
+.navPeriod {
+    display: block;
+    margin-top: 2px;
+    font-family: t.$font-display;
+    font-size: 16px;
+    font-weight: 400;
+    color: #3D2920;
+    font-variation-settings: "SOFT" 60;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    @media (max-width: 480px) {
+        font-size: 14px;
+    }
+}
+
+// ---- The Letter ------------------------------------------------------------
+.letter {
+    position: relative;
+    background: linear-gradient(180deg, #FAF1E0 0%, #F8EDD8 100%);
+    border-radius: 4px;
+    padding: 56px 56px 44px;
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.6) inset,
+        0 0 0 1px rgba(217, 199, 166, 0.35),
+        0 1px 2px rgba(70, 40, 20, 0.04),
+        0 12px 32px rgba(70, 40, 20, 0.06);
+    font-family: t.$font-display;
+    color: t.$color-ink;
+    animation: letterFadeIn 480ms t.$ease-soft both;
+
+    @media (max-width: 768px) {
+        padding: 44px 36px 36px;
+    }
+
+    @media (max-width: 480px) {
+        padding: 32px 22px 28px;
+        border-radius: 3px;
+    }
+}
+
+@keyframes letterFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+// Used by Generating state which keeps the letter shape but centers spinner.
+.letterCenteredContent {
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    gap: 2rem;
-    margin: 2rem 0;
+    text-align: center;
+}
 
-    button {
-        padding: 0.8rem 2rem;
-        font-size: 1.1rem;
-        border: none;
-        background: transparent;
-        color: #95a5a6;
-        cursor: pointer;
-        border-bottom: 3px solid transparent;
-        transition: all 0.3s;
+.greeting {
+    margin: 0 0 1.6em;
+    font-family: t.$font-display;
+    font-size: 21px;
+    font-weight: 400;
+    letter-spacing: -0.005em;
+    color: t.$color-ink;
+    font-variation-settings: "SOFT" 60, "opsz" 24;
 
-        &.active {
-            color: #3498db;
-            border-bottom-color: #3498db;
-            font-weight: 600;
+    @media (max-width: 480px) {
+        font-size: 19px;
+        margin-bottom: 1.4em;
+    }
+}
+
+.body {
+    font-size: 18px;
+    line-height: 1.85;
+    font-weight: 380;
+    color: t.$color-ink;
+    letter-spacing: -0.003em;
+    font-variation-settings: "SOFT" 100, "opsz" 18;
+
+    // Optical refinements for serif body text.
+    font-feature-settings: "kern", "liga", "calt";
+
+    @media (max-width: 480px) {
+        font-size: 17px;
+        line-height: 1.78;
+    }
+}
+
+.paragraph {
+    margin: 0 0 1.8em;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+
+    @media (max-width: 480px) {
+        margin-bottom: 1.5em;
+    }
+}
+
+.closing {
+    margin: 2.2em 0 0;
+    font-family: t.$font-display;
+    font-size: 17px;
+    font-weight: 380;
+    font-style: italic;
+    color: t.$color-ink-soft;
+    text-align: right;
+    letter-spacing: 0.005em;
+
+    @media (max-width: 480px) {
+        font-size: 16px;
+        margin-top: 1.8em;
+    }
+}
+
+// ---- Postmark (small "Generated DATE" line below the letter) -------------
+.postmark {
+    margin-top: 28px;
+    text-align: center;
+    font-family: t.$font-display;
+    font-style: italic;
+    font-size: 12px;
+    color: t.$color-ink-mute;
+    letter-spacing: 0.06em;
+
+    @media (max-width: 480px) {
+        margin-top: 20px;
+        font-size: 11px;
+    }
+}
+
+// ---- State views (loading, generating, failed, empty) -------------------
+.stateCenter {
+    text-align: center;
+    padding: 72px 24px;
+
+    @media (max-width: 480px) {
+        padding: 56px 16px;
+    }
+}
+
+.stateTitle {
+    margin: 0 0 8px;
+    font-family: t.$font-display;
+    font-size: 22px;
+    font-weight: 400;
+    color: #3D2920;
+    letter-spacing: -0.005em;
+    font-variation-settings: "SOFT" 60, "opsz" 24;
+
+    @media (max-width: 480px) {
+        font-size: 19px;
+    }
+}
+
+.stateMuted {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: t.$color-ink-soft;
+
+    @media (max-width: 480px) {
+        font-size: 14px;
+    }
+}
+
+.stateError {
+    margin: 12px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: t.$color-danger;
+    opacity: 0.8;
+}
+
+.emptyIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(201, 130, 74, 0.08);
+    color: t.$color-accent;
+    margin-bottom: 24px;
+}
+
+// ---- Generating state (inside letter) -----------------------------------
+.generatingTitle {
+    margin: 0;
+    font-family: t.$font-display;
+    font-style: italic;
+    font-size: 18px;
+    color: t.$color-ink-soft;
+    font-weight: 380;
+}
+
+.generatingHint {
+    margin: 8px 0 0;
+    font-family: t.$font-display;
+    font-size: 13px;
+    font-style: italic;
+    color: t.$color-ink-mute;
+}
+
+// ---- Animated dots (used in loading + generating) ----------------------
+.dots {
+    display: inline-flex;
+    gap: 6px;
+    margin-bottom: 20px;
+
+    span {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: t.$color-accent;
+        animation: dotPulse 1.4s ease-in-out infinite;
+
+        &:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        &:nth-child(3) {
+            animation-delay: 0.4s;
         }
     }
 }
 
-.empty,
-.placeholder {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: #95a5a6;
-    font-size: 1.1rem;
-    line-height: 1.8;
+@keyframes dotPulse {
+
+    0%,
+    60%,
+    100% {
+        opacity: 0.25;
+        transform: scale(0.85);
+    }
+
+    30% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
+// ---- Retry button -----------------------------------------------------
 .retryButton {
-    appearance: none;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-
-    margin-top: 1rem;
-    padding: 0.625rem 1.25rem; // 10px 20px
-
-    border-radius: 0.625rem;
-    border: 0.0625rem solid #fecaca;
-    background: #fff1f2;
-
-    font-size: 0.875rem;
+    gap: 8px;
+    margin-top: 24px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    background: t.$color-accent;
+    color: white;
+    border: 0;
+    font-family: t.$font-body;
+    font-size: 14px;
     font-weight: 600;
-    color: #b91c1c;
-
+    letter-spacing: 0.01em;
     cursor: pointer;
-    transition: background-color 0.15s ease,
-        border-color 0.15s ease,
-        transform 0.1s ease;
-}
+    box-shadow: 0 2px 10px t.$color-accent-glow;
+    transition:
+        background 200ms t.$ease-soft,
+        transform 200ms t.$ease-pop,
+        box-shadow 200ms t.$ease-soft;
 
-.retryButton:hover:not(:disabled) {
-    background: #ffe4e6;
-    border-color: #fca5a5;
-}
-
-.retryButton:active:not(:disabled) {
-    transform: translateY(0.0625rem);
-}
-
-.retryButton:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-
-.errorMessage {
-    margin-top: 0.75rem;
-
-    font-size: 0.8125rem; // 13px
-    line-height: 1.4;
-
-    color: #b91c1c;
-    text-align: center;
-
-    word-break: break-word;
-}
-
-
-.navigator {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-
-    margin: 1.5rem 0;
-    padding: 0.75rem 1rem;
-
-    border-radius: 0.75rem;
-    background: #f9fafb;
-    border: 0.0625rem solid #e5e7eb;
-
-    .currentPeriod {
-        flex: 1 1 auto;
-        min-width: 7rem;
-
-        text-align: center;
-        font-weight: 600;
-        font-size: clamp(0.875rem, 3vw, 1rem);
-        color: #374151;
-
-        white-space: nowrap;
+    &:hover:not(:disabled) {
+        background: t.$color-accent-deep;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px t.$color-accent-glow;
     }
 
-    .navButton {
-        appearance: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-
-        flex: 0 1 auto;
-        padding: clamp(0.5rem, 2.5vw, 0.625rem) clamp(0.75rem, 4vw, 1.125rem);
-
-        border-radius: 0.625rem;
-        border: 0.0625rem solid #d1d5db;
-        background: #ffffff;
-
-        font-size: clamp(0.8125rem, 3vw, 0.9375rem);
-        font-weight: 600;
-        color: #111827;
-
-        cursor: pointer;
-        transition: background-color 0.15s ease,
-            border-color 0.15s ease,
-            transform 0.1s ease;
+    &:active:not(:disabled) {
+        transform: translateY(0) scale(0.97);
     }
 
-    .navButton:hover:not(:disabled) {
-        background: #f3f4f6;
-        border-color: #9ca3af;
-    }
-
-    .navButton:active:not(:disabled) {
-        transform: translateY(0.0625rem);
-    }
-
-    .navButton:disabled {
-        opacity: 0.4;
+    &:disabled {
+        background: t.$color-surface-sunk;
+        color: t.$color-ink-mute;
         cursor: not-allowed;
-    }
-
-}
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-// Responsive
-@media (max-width: 640px) {
-    .container {
-        padding: 1rem;
+        box-shadow: none;
     }
 }

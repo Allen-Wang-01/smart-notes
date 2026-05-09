@@ -1,136 +1,289 @@
-.newNoteCard {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 15px;
-    padding: 20px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    max-width: 600px;
+// styles/NewNoteCard.module.scss
+@use './token' as t;
+
+.card {
+    width: 100%;
+    max-width: 720px;
     margin: 0 auto;
+    padding: 20px 22px 18px;
+    background: t.$color-surface;
+    border: 1px solid t.$color-border;
+    border-radius: t.$radius-xl;
+    box-shadow: t.$shadow-md;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    font-family: t.$font-body;
+    color: t.$color-ink;
+    transition: box-shadow 240ms t.$ease-soft, border-color 240ms t.$ease-soft;
+    box-sizing: border-box;
 
-    .textarea {
-        padding: 12px;
-        font-size: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        resize: none;
-        outline: none;
-
-        &:focus {
-            border-color: #007bff;
-        }
+    @media (max-width: 480px) {
+        padding: 16px 14px 14px;
+        border-radius: t.$radius-lg; // smaller corners feel right on small screens
     }
 
-    .container {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
+    &:focus-within {
+        border-color: t.$color-border-strong;
+        box-shadow: t.$shadow-lg;
+    }
+}
 
-        .categoryButtons {
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            padding-bottom: 5px;
+// ---- Segmented control ------------------------------------------------------
+.segmented {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 4px;
+    background: t.$color-surface-sunk;
+    border-radius: t.$radius-md;
+    align-self: flex-start; // don't stretch full width — keep it compact
+    min-width: 240px;
 
-            .categoryButton {
-                padding: 8px 16px;
-                font-size: 1rem;
-                border: none;
-                border-radius: 4px;
-                background: #f4f4f4;
-                cursor: pointer;
-                transition: background-color 0.2s;
-                min-width: 80px;
-                text-align: center;
+    @media (max-width: 480px) {
+        min-width: 0; // let it shrink
+        width: 100%; // span full card width
+        align-self: stretch;
+    }
+}
 
-                &.active {
-                    background: #007bff;
-                    color: white;
-                }
+.segmentedSlider {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: calc(50% - 4px);
+    height: calc(100% - 8px);
+    background: t.$color-surface;
+    border-radius: calc(#{t.$radius-md} - 4px);
+    box-shadow: t.$shadow-sm;
+    transition: transform 320ms t.$ease-soft;
+    z-index: 0;
+}
 
-                &:hover {
-                    background: #e0e0e0;
-                }
-            }
-        }
+.segment {
+    position: relative;
+    z-index: 1;
+    padding: 8px 14px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: t.$color-ink-soft;
+    border-radius: calc(#{t.$radius-md} - 4px);
+    transition: color 200ms t.$ease-soft;
 
-        .continueCreating {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.9rem;
-            color: #333;
-        }
+    &:hover:not(:disabled) {
+        color: t.$color-ink;
     }
 
-    .sendButton {
-        align-self: flex-end;
-        padding: 10px;
-        background: #28a745;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        display: flex;
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+}
+
+.segmentActive {
+    color: t.$color-accent-deep;
+    font-weight: 600;
+}
+
+// ---- Main textarea ----------------------------------------------------------
+.textarea {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    resize: none;
+    background: transparent;
+    font-family: t.$font-body;
+    font-size: 16px;
+    line-height: 1.6;
+    color: t.$color-ink;
+    padding: 4px 2px;
+
+    &::placeholder {
+        color: t.$color-ink-mute;
+        font-style: italic;
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+}
+
+// ---- Description field — persistent, slightly recessed ---------------------
+.descriptionWrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    background: t.$color-surface-sunk;
+    border-radius: t.$radius-md;
+    transition: background 200ms t.$ease-soft;
+
+    &:focus-within {
+        background: t.$color-accent-soft;
+    }
+}
+
+.descriptionLabel {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: t.$color-ink-soft;
+}
+
+.descriptionHint {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 12px;
+    color: t.$color-ink-mute;
+    font-style: italic;
+}
+
+.descriptionInput {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-family: t.$font-body;
+    font-size: 14px;
+    line-height: 1.5;
+    color: t.$color-ink;
+    padding: 0;
+
+    &::placeholder {
+        color: t.$color-ink-mute;
+    }
+
+    &:disabled {
+        opacity: 0.6;
+    }
+}
+
+// ---- Footer (hint + send) ---------------------------------------------------
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 4px;
+
+    @media (max-width: 480px) {
+        justify-content: end;
+    }
+}
+
+.shortcutHint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: t.$color-ink-mute;
+
+    // Hide the hint on touch devices — there's no physical keyboard, so
+    // showing "Cmd + Enter to send" is misleading and just takes up space.
+    @media (pointer: coarse),
+    (max-width: 480px) {
+        display: none;
+    }
+}
+
+.kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    background: t.$color-surface-sunk;
+    border: 1px solid t.$color-border;
+    border-radius: 5px;
+    font-family: t.$font-body;
+    font-size: 11px;
+    font-weight: 600;
+    color: t.$color-ink-soft;
+    line-height: 1;
+}
+
+// ---- Send button — pill style with label + arrow --------------------------
+.sendButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px 10px 20px;
+    border: 0;
+    border-radius: 999px; // full pill
+    background: t.$color-accent;
+    color: white;
+    font-family: t.$font-body;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 2px 10px t.$color-accent-glow;
+    transition:
+        background 200ms t.$ease-soft,
+        transform 200ms t.$ease-pop,
+        box-shadow 200ms t.$ease-soft,
+        padding 240ms t.$ease-soft;
+
+    // The arrow nudges right on hover — small, but it sells the "send" action
+    .sendButtonIcon {
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        transition: background-color 0.2s;
+        transition: transform 240ms t.$ease-pop;
+    }
 
-        &:hover {
-            background: #218838;
-        }
+    &:hover:not(:disabled) {
+        background: t.$color-accent-deep;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px t.$color-accent-glow;
 
-        &:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        .arrowIcon {
-            transform: rotate(-90deg);
-        }
-
-        .spinner {
-            animation: spin 1s linear infinite;
+        .sendButtonIcon {
+            transform: translateX(3px);
         }
     }
 
-    @media (max-width: 768px) {
-        padding: 15px;
-        max-width: 100%;
-
-        .textarea {
-            padding: 10px;
-            font-size: 0.9rem;
-        }
-
-        .container {
-            .categoryButtons {
-                .categoryButton {
-                    padding: 10px 14px;
-                    font-size: 0.9rem;
-                    min-width: 70px;
-                }
-            }
-
-            .continueCreating {
-                font-size: 0.85rem;
-            }
-        }
-
-        .sendButton {
-            padding: 12px;
-        }
+    &:active:not(:disabled) {
+        transform: translateY(0) scale(0.97);
     }
 
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
+    &:disabled {
+        background: t.$color-surface-sunk;
+        color: t.$color-ink-mute;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+}
 
-        100% {
-            transform: rotate(360deg);
-        }
+.sendButtonLabel {
+    line-height: 1;
+}
+
+.sendButtonIcon {
+    line-height: 0; // prevents inline-svg baseline wobble
+}
+
+.spinner {
+    animation: spin 900ms linear infinite;
+    color: currentColor;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
     }
 }

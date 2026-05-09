@@ -1,16 +1,51 @@
+@use './token' as t;
+
 .mainContent {
+    // Fill the available area. Adjust if MainContent is nested inside
+    // a layout that already controls height (e.g. a sidebar layout) —
+    // in that case `height: 100%` may be more appropriate than `min-height: 100vh`.
     min-height: 100vh;
-    flex: 1;
+    width: 100%;
+
+    // Warm cream backdrop — matches the palette in NewNoteCard's tokens.
+    // The card itself is pure white, so this slightly off-white background
+    // lets the card "float" with a subtle warm halo.
+    background: t.$color-canvas;
+
+    // Subtle radial warmth at the top to add depth without being decorative.
+    // Comment out if you prefer a perfectly flat background.
+    background-image: radial-gradient(ellipse 80% 60% at 50% -10%,
+            rgba(201, 130, 74, 0.06),
+            transparent 70%);
+
+    // Centered scroll container. Padding keeps content off the edges on
+    // narrow screens.
+    padding: 32px 24px 64px;
+    box-sizing: border-box;
+
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    background-color: #f5f5f5;
-    border-left: 1px solid #e5e7eb;
+
+    font-family: t.$font-body;
+    color: t.$color-ink;
+
+    @media (max-width: 480px) {
+        padding: 16px 12px 48px;
+    }
 }
 
+// Container for the home view (Greeting + NewNoteCard stacked).
 .newNoteContainer {
     width: 100%;
-    max-width: 600px;
+    max-width: 720px; // matches NewNoteCard's max-width for visual alignment
+
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: stretch; // NewNoteCard fills the container width
+    gap: 8px; // small gap; Greeting has its own bottom padding
+
+    // Push the content down a bit from the top — feels more inviting than
+    // hugging the very top edge, but doesn't waste space like dead-center would.
+    margin-top: clamp(24px, 6vh, 80px);
 }

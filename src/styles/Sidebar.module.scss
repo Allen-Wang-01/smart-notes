@@ -1,12 +1,15 @@
+@use './token' as t;
+
 .sidebar {
     display: flex;
     flex-direction: column;
     height: 100%;
-    background-color: #f4f4f4;
+    background: t.$color-canvas;
     padding: 1.25rem; //20px
     padding-bottom: 2rem;
     overflow-y: auto;
     box-sizing: border-box;
+    border-right: 1px solid t.$color-border;
 
 
     .header {
@@ -22,7 +25,8 @@
 
         .logoutButton {
             background: transparent;
-            border: none;
+            color: t.$color-ink-soft; // #6B5544 — softer than primary text
+            border: 0;
             color: var(--text-secondary, #888);
             font-size: 0.9rem;
             cursor: pointer;
@@ -30,13 +34,13 @@
             border-radius: 4px;
             transition: all 0.2s ease;
 
-            &:hover {
-                background: rgba(255, 75, 75, 0.1);
-                color: #e74c3c;
+            &:hover:not(:disabled) {
+                background: t.$color-surface-sunk; // #F4ECDF
+                color: t.$color-ink; // text gets stronger on hover
             }
 
-            &:active {
-                transform: translateY(1px);
+            &:active:not(:disabled) {
+                background: t.$color-border; // #EBDFC9 — slightly deeper press state
             }
         }
 
@@ -55,13 +59,42 @@
         }
 
         .summaryButton {
-            background-color: #007bff;
-            color: white;
+            background: t.$color-surface; // #FFFFFF
+            color: t.$color-ink; // #2E1F14
+            border: 1px solid t.$color-border; // #EBDFC9
+
+            &:hover:not(:disabled) {
+                background: t.$color-surface-sunk; // #F4ECDF — warm sunken cream
+                border-color: t.$color-border-strong; // #D9C7A6
+                color: t.$color-accent-deep; // hint of amber on hover
+            }
+
+            &:active:not(:disabled) {
+                background: t.$color-accent-soft; // #F5E4D0 — subtle amber wash
+            }
         }
 
         .newNoteButton {
-            background-color: #28a745;
+            background: t.$color-accent; // #C9824A
             color: white;
+            border: 0;
+            box-shadow: 0 2px 10px t.$color-accent-glow;
+
+            &:hover:not(:disabled) {
+                background: t.$color-accent-deep; // #A66432
+                box-shadow: 0 4px 16px t.$color-accent-glow;
+            }
+
+            &:active:not(:disabled) {
+                background: t.$color-accent-deep;
+                transform: scale(0.97);
+            }
+
+            &:disabled {
+                background: t.$color-surface-sunk;
+                color: t.$color-ink-mute;
+                box-shadow: none;
+            }
         }
     }
 
