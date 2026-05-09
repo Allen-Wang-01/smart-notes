@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import NotePage from "./NotePage";
+import Greeting from "./Greeting";
 import NewNoteCard from "./NewNoteCard";
 import styles from "../styles/MainContent.module.scss";
 
@@ -12,6 +13,7 @@ const MainContent = () => {
                 <NotePage />
             ) : (
                 <div className={styles.newNoteContainer}>
+                    <Greeting />
                     <NewNoteCard />
                 </div>
             )}

@@ -1,0 +1,34 @@
+// styles/Greeting.module.scss
+@use './token' as t;
+
+.greeting {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 0px 24px;
+    text-align: center;
+    animation: fadeUp 600ms t.$ease-soft both;
+}
+
+.text {
+    margin: 0;
+    font-family: t.$font-display;
+    font-weight: 300; // Fraunces looks beautiful at light weights
+    font-size: clamp(28px, 4vw, 44px);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    color: t.$color-ink;
+    font-variation-settings: "SOFT" 100, "WONK" 0; // Fraunces axes: softer terminals
+}
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
