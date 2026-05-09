@@ -96,7 +96,7 @@ const Sidebar = ({ closeSidebar, onNewNote }: SidebarProps) => {
                             if (closeSidebar) closeSidebar()
                         }}
                 >
-                    Report
+                    Letters
                 </button>
                 <button className={styles.newNoteButton} onClick={() => {
                     onNewNote()
