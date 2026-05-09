@@ -1,0 +1,1044 @@
+// ============================================================
+// LandingPage.module.scss
+// Shared styles for the landing page.
+// Uses your project tokens (warm cream + amber) but preserves
+// editorial restraint via serif body, sharper corners, mono
+// micro-typography.
+// ============================================================
+
+@use '../../styles/token' as t;
+
+// ----- Editorial extensions on top of your tokens ----------
+// Body font for the landing page is intentionally a serif.
+// The product UI uses Geist (sans). This is the "editorial pace"
+// that distinguishes marketing reading from product working.
+$font-serif-body: 'Source Serif 4', 'Iowan Old Style', Georgia, serif;
+$font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+// Slightly muted text levels derived from your ink.
+$ink-quiet: rgba(46, 31, 20, 0.62);
+$ink-faint: rgba(46, 31, 20, 0.38);
+
+// ----- Page shell ------------------------------------------
+.page {
+    background: t.$color-canvas;
+    color: t.$color-ink;
+    font-family: $font-serif-body;
+    font-size: 18px;
+    line-height: 1.6;
+    font-feature-settings: 'kern', 'liga', 'onum';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    position: relative;
+    overflow-x: hidden;
+
+    // Subtle paper grain — pure CSS, no images
+    &::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 1;
+        background-image:
+            radial-gradient(rgba(46, 31, 20, 0.022) 1px, transparent 1px),
+            radial-gradient(rgba(46, 31, 20, 0.018) 1px, transparent 1px);
+        background-size: 3px 3px, 7px 7px;
+        background-position: 0 0, 1px 2px;
+        mix-blend-mode: multiply;
+    }
+
+    ::selection {
+        background: t.$color-accent;
+        color: t.$color-canvas;
+    }
+}
+
+.wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 clamp(20px, 4vw, 56px);
+    position: relative;
+    z-index: 2;
+}
+
+// ----- Section building blocks (used inside section files) -
+.sectionLabel {
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: $ink-quiet;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+
+    .num {
+        color: t.$color-accent;
+        font-weight: 500;
+    }
+}
+
+.sectionIntro {
+    max-width: 60ch;
+    margin-bottom: 56px;
+
+    h2 {
+        font-family: t.$font-display;
+        font-weight: 400;
+        font-size: clamp(28px, 3.6vw, 44px);
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+        color: t.$color-ink;
+        margin: 0 0 18px;
+        font-variation-settings: 'opsz' 144;
+    }
+
+    p {
+        font-size: 18px;
+        line-height: 1.65;
+        color: t.$color-ink-soft;
+        margin: 0;
+    }
+}
+
+// ----- Reusable buttons ------------------------------------
+.btnPrimary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 22px;
+    background: t.$color-ink;
+    color: t.$color-canvas;
+    border: 1px solid t.$color-ink;
+    border-radius: t.$radius-sm;
+    font-family: $font-serif-body;
+    font-size: 15px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s t.$ease-soft,
+        border-color 0.2s t.$ease-soft;
+
+    .arrow {
+        transition: transform 0.25s t.$ease-soft;
+    }
+
+    &:hover {
+        background: t.$color-accent-deep;
+        border-color: t.$color-accent-deep;
+
+        .arrow {
+            transform: translateX(4px);
+        }
+    }
+
+    &:focus-visible {
+        outline: 2px solid t.$color-accent;
+        outline-offset: 3px;
+    }
+}
+
+.btnQuiet {
+    color: t.$color-ink-soft;
+    border-bottom: 1px solid $ink-faint;
+    padding-bottom: 2px;
+    text-decoration: none;
+    cursor: pointer;
+    background: none;
+    border-left: 0;
+    border-right: 0;
+    border-top: 0;
+    font-family: inherit;
+    font-size: 15px;
+    transition: color 0.2s t.$ease-soft, border-color 0.2s t.$ease-soft;
+
+    &:hover {
+        color: t.$color-ink;
+        border-bottom-color: t.$color-ink;
+    }
+
+    &:focus-visible {
+        outline: 2px solid t.$color-accent;
+        outline-offset: 3px;
+        border-radius: 2px;
+    }
+}
+
+// ----- Reveal animation ------------------------------------
+.reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.9s t.$ease-soft, transform 0.9s t.$ease-soft;
+
+    &.in {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
+// ============================================================
+// TOPBAR
+// ============================================================
+.topbar {
+    padding: 28px 0 0;
+    position: relative;
+    z-index: 10;
+}
+
+.topbarInner {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid t.$color-border;
+    padding-bottom: 22px;
+}
+
+.wordmark {
+    font-family: t.$font-display;
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    color: t.$color-ink;
+    font-variation-settings: 'opsz' 144;
+
+    .dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: t.$color-accent;
+        transform: translateY(-3px);
+        margin-left: 2px;
+    }
+}
+
+.nav {
+    display: flex;
+    gap: 32px;
+    font-size: 14px;
+    color: t.$color-ink-soft;
+
+    a {
+        color: inherit;
+        text-decoration: none;
+        transition: color 0.2s t.$ease-soft;
+
+        &:hover {
+            color: t.$color-ink;
+        }
+    }
+
+    .ctaLink {
+        color: t.$color-accent;
+
+        &:hover {
+            color: t.$color-accent-deep;
+        }
+    }
+}
+
+@media (max-width: 640px) {
+    .nav {
+        gap: 18px;
+        font-size: 13px;
+
+        .navHide {
+            display: none;
+        }
+    }
+}
+
+// ============================================================
+// HERO
+// ============================================================
+.hero {
+    padding: clamp(60px, 10vh, 130px) 0 clamp(50px, 8vh, 100px);
+    position: relative;
+}
+
+.heroEyebrow {
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: $ink-quiet;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    &::before {
+        content: '';
+        width: 28px;
+        height: 1px;
+        background: $ink-quiet;
+    }
+}
+
+.heroH1 {
+    font-family: t.$font-display;
+    font-weight: 300;
+    font-size: clamp(38px, 6.2vw, 76px);
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+    color: t.$color-ink;
+    max-width: 18ch;
+    font-variation-settings: 'opsz' 144, 'SOFT' 30;
+    margin: 0 0 32px;
+
+    em {
+        font-style: italic;
+        font-weight: 300;
+        color: t.$color-accent;
+    }
+}
+
+.heroSub {
+    font-size: clamp(17px, 1.6vw, 21px);
+    line-height: 1.55;
+    color: t.$color-ink-soft;
+    max-width: 56ch;
+    margin: 0 0 44px;
+}
+
+.heroActions {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+    font-size: 15px;
+}
+
+.heroDate {
+    position: absolute;
+    top: clamp(60px, 10vh, 130px);
+    right: clamp(20px, 4vw, 56px);
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: $ink-faint;
+    text-align: right;
+    line-height: 1.7;
+}
+
+@media (max-width: 900px) {
+    .heroDate {
+        display: none;
+    }
+}
+
+// ============================================================
+// LETTER (centerpiece)
+// ============================================================
+.letterSection {
+    padding: clamp(50px, 8vh, 100px) 0 clamp(60px, 10vh, 120px);
+    position: relative;
+
+    &::before {
+        content: '';
+        display: block;
+        width: 100%;
+        height: 1px;
+        background: t.$color-border;
+        margin-bottom: clamp(50px, 8vh, 100px);
+    }
+}
+
+.letter {
+    background: #fbf7ec;
+    border: 1px solid t.$color-border;
+    border-radius: t.$radius-sm;
+    padding: clamp(32px, 5vw, 80px) clamp(24px, 5vw, 90px);
+    max-width: 720px;
+    margin: 0 auto;
+    position: relative;
+    box-shadow: t.$shadow-md;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: -1px;
+        left: -1px;
+        width: 28px;
+        height: 28px;
+        border-top: 1px solid $ink-faint;
+        border-left: 1px solid $ink-faint;
+        border-top-left-radius: t.$radius-sm;
+    }
+
+    &::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        right: -1px;
+        width: 28px;
+        height: 28px;
+        border-bottom: 1px solid $ink-faint;
+        border-right: 1px solid $ink-faint;
+        border-bottom-right-radius: t.$radius-sm;
+    }
+}
+
+.letterHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+    border-bottom: 1px solid t.$color-border;
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: $ink-quiet;
+    text-transform: uppercase;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.letterBody {
+    font-family: $font-serif-body;
+    font-size: clamp(16px, 1.4vw, 18.5px);
+    line-height: 1.75;
+    color: t.$color-ink;
+
+    p {
+        margin: 0 0 1.2em;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .salutation {
+        font-style: italic;
+        color: t.$color-ink-soft;
+        margin-bottom: 1.8em;
+    }
+
+    .signoff {
+        margin-top: 2em;
+        font-style: italic;
+        color: t.$color-ink-soft;
+    }
+
+    strong {
+        font-weight: 500;
+        color: t.$color-ink;
+        background: linear-gradient(to top,
+                t.$color-accent-soft 30%,
+                transparent 30%);
+        padding: 0 2px;
+    }
+}
+
+// ============================================================
+// PILLARS
+// ============================================================
+.pillars {
+    padding: clamp(50px, 8vh, 100px) 0 clamp(60px, 10vh, 120px);
+    border-top: 1px solid t.$color-border;
+}
+
+.pillarGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(32px, 4vw, 64px);
+    margin-top: 56px;
+}
+
+@media (max-width: 820px) {
+    .pillarGrid {
+        grid-template-columns: 1fr;
+        gap: 48px;
+    }
+}
+
+.pillar {
+    position: relative;
+    padding-top: 28px;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 32px;
+        height: 1px;
+        background: t.$color-accent;
+    }
+
+    .pillarNum {
+        font-family: $font-mono;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        color: t.$color-accent;
+        margin-bottom: 18px;
+        text-transform: uppercase;
+    }
+
+    h3 {
+        font-family: t.$font-display;
+        font-weight: 400;
+        font-size: 28px;
+        letter-spacing: -0.015em;
+        margin: 0 0 14px;
+        font-variation-settings: 'opsz' 144;
+        color: t.$color-ink;
+
+        .quiet {
+            display: block;
+            font-style: italic;
+            font-size: 16px;
+            color: $ink-quiet;
+            font-weight: 300;
+            margin-top: 4px;
+            letter-spacing: 0;
+        }
+    }
+
+    p {
+        color: t.$color-ink-soft;
+        line-height: 1.65;
+        font-size: 16.5px;
+        margin: 0;
+    }
+}
+
+// ============================================================
+// DIFFERENT
+// ============================================================
+.different {
+    padding: clamp(50px, 8vh, 100px) 0 clamp(60px, 10vh, 120px);
+    border-top: 1px solid t.$color-border;
+}
+
+.diffList {
+    margin-top: 48px;
+    display: grid;
+    gap: 0;
+}
+
+.diffRow {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: clamp(28px, 5vw, 80px);
+    padding: 32px 0;
+    border-bottom: 1px solid t.$color-border;
+    align-items: baseline;
+
+    &:first-child {
+        border-top: 1px solid t.$color-border;
+    }
+
+    h4 {
+        font-family: t.$font-display;
+        font-weight: 400;
+        font-style: italic;
+        font-size: clamp(20px, 2.2vw, 26px);
+        color: t.$color-ink;
+        letter-spacing: -0.01em;
+        line-height: 1.25;
+        margin: 0;
+    }
+
+    p {
+        color: t.$color-ink-soft;
+        font-size: 17px;
+        line-height: 1.6;
+        margin: 0;
+
+        em {
+            color: t.$color-ink;
+            font-style: italic;
+        }
+    }
+}
+
+@media (max-width: 720px) {
+    .diffRow {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 26px 0;
+    }
+}
+
+// ============================================================
+// STORIES
+// ============================================================
+.stories {
+    padding: clamp(50px, 8vh, 100px) 0 clamp(60px, 10vh, 120px);
+    border-top: 1px solid t.$color-border;
+}
+
+.story {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: clamp(28px, 4vw, 80px);
+    padding: 48px 0;
+    border-bottom: 1px solid t.$color-border;
+
+    &:first-of-type {
+        border-top: 1px solid t.$color-border;
+        margin-top: 48px;
+    }
+}
+
+.storyMeta {
+    font-family: $font-mono;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: $ink-quiet;
+    line-height: 1.7;
+
+    .num {
+        color: t.$color-accent;
+        font-size: 32px;
+        font-family: t.$font-display;
+        font-weight: 300;
+        letter-spacing: 0;
+        text-transform: none;
+        display: block;
+        margin-bottom: 8px;
+        font-style: italic;
+    }
+}
+
+.storyContent {
+    h3 {
+        font-family: t.$font-display;
+        font-weight: 400;
+        font-size: clamp(22px, 2.4vw, 30px);
+        margin: 0 0 18px;
+        letter-spacing: -0.015em;
+        line-height: 1.25;
+        color: t.$color-ink;
+    }
+
+    p {
+        color: t.$color-ink-soft;
+        font-size: 17px;
+        line-height: 1.65;
+        margin: 0 0 1em;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .fromLetter {
+        font-style: italic;
+        color: t.$color-ink;
+        border-left: 2px solid t.$color-accent;
+        padding: 4px 0 4px 20px;
+        margin: 18px 0;
+        font-size: 16.5px;
+    }
+}
+
+@media (max-width: 820px) {
+    .story {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+}
+
+// ============================================================
+// HOW IT WORKS
+// ============================================================
+.how {
+    padding: clamp(50px, 8vh, 100px) 0 clamp(60px, 10vh, 120px);
+    border-top: 1px solid t.$color-border;
+}
+
+.flow {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    margin-top: 56px;
+    border: 1px solid t.$color-border;
+    border-radius: t.$radius-sm;
+    background: #fbf7ec;
+    overflow: hidden;
+}
+
+.flowStep {
+    padding: 36px 32px;
+    border-right: 1px solid t.$color-border;
+    position: relative;
+
+    &:last-child {
+        border-right: none;
+    }
+
+    .glyph {
+        font-family: t.$font-display;
+        font-style: italic;
+        font-size: 56px;
+        color: $ink-faint;
+        font-weight: 300;
+        line-height: 1;
+        margin-bottom: 24px;
+        display: block;
+    }
+
+    .stepLabel {
+        font-family: $font-mono;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        color: t.$color-accent;
+        text-transform: uppercase;
+        margin-bottom: 16px;
+    }
+
+    h4 {
+        font-family: t.$font-display;
+        font-weight: 400;
+        font-size: 22px;
+        letter-spacing: -0.01em;
+        margin: 0 0 12px;
+        color: t.$color-ink;
+    }
+
+    p {
+        color: t.$color-ink-soft;
+        font-size: 15px;
+        line-height: 1.6;
+        margin: 0;
+    }
+}
+
+@media (max-width: 820px) {
+    .flow {
+        grid-template-columns: 1fr;
+    }
+
+    .flowStep {
+        border-right: none;
+        border-bottom: 1px solid t.$color-border;
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+}
+
+// ============================================================
+// WHO IT'S FOR
+// ============================================================
+.who {
+    padding: clamp(50px, 8vh, 100px) 0 clamp(60px, 10vh, 120px);
+    border-top: 1px solid t.$color-border;
+}
+
+.whoList {
+    margin-top: 48px;
+    max-width: 64ch;
+}
+
+.whoItem {
+    padding: 26px 0;
+    border-bottom: 1px solid t.$color-border;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 28px;
+    align-items: baseline;
+
+    &:first-child {
+        border-top: 1px solid t.$color-border;
+    }
+
+    .marker {
+        font-family: t.$font-display;
+        font-style: italic;
+        font-size: 24px;
+        color: t.$color-accent;
+        font-weight: 300;
+    }
+
+    p {
+        font-size: 18px;
+        line-height: 1.55;
+        color: t.$color-ink;
+        margin: 0;
+
+        em {
+            color: t.$color-ink-soft;
+            font-style: italic;
+        }
+    }
+}
+
+.whoNot {
+    margin-top: 36px;
+    font-size: 16px;
+    color: $ink-quiet;
+    font-style: italic;
+    max-width: 60ch;
+    line-height: 1.65;
+}
+
+// ============================================================
+// FRAME (deeper idea)
+// ============================================================
+.frame {
+    padding: clamp(60px, 10vh, 130px) clamp(20px, 4vw, 56px);
+    border-top: 1px solid t.$color-border;
+    background: t.$color-surface-sunk;
+    position: relative;
+    z-index: 2;
+}
+
+.frameInner {
+    max-width: 56ch;
+    margin: 0 auto;
+
+    p {
+        font-family: t.$font-display;
+        font-weight: 300;
+        font-size: clamp(22px, 2.4vw, 30px);
+        line-height: 1.4;
+        letter-spacing: -0.01em;
+        color: t.$color-ink;
+        margin: 0 0 1em;
+        font-variation-settings: 'opsz' 144;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+
+        em {
+            font-style: italic;
+            color: t.$color-accent-deep;
+        }
+
+        &.smaller {
+            font-size: clamp(16px, 1.5vw, 19px);
+            color: t.$color-ink-soft;
+            line-height: 1.6;
+            font-weight: 400;
+        }
+    }
+}
+
+// ============================================================
+// FAQ
+// ============================================================
+.faq {
+    padding: clamp(50px, 8vh, 100px) 0 clamp(60px, 10vh, 120px);
+    border-top: 1px solid t.$color-border;
+}
+
+.faqList {
+    margin-top: 48px;
+}
+
+.faqItem {
+    border-bottom: 1px solid t.$color-border;
+
+    &:first-child {
+        border-top: 1px solid t.$color-border;
+    }
+
+    summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 28px 0;
+        font-family: t.$font-display;
+        font-weight: 400;
+        font-size: clamp(17px, 1.8vw, 22px);
+        color: t.$color-ink;
+        letter-spacing: -0.01em;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+        transition: color 0.2s t.$ease-soft;
+
+        &::-webkit-details-marker {
+            display: none;
+        }
+
+        &:hover {
+            color: t.$color-accent-deep;
+        }
+
+        .plus {
+            font-family: $font-serif-body;
+            font-weight: 300;
+            font-size: 24px;
+            color: $ink-quiet;
+            transition: transform 0.3s t.$ease-soft;
+            flex-shrink: 0;
+        }
+    }
+
+    &[open] summary .plus {
+        transform: rotate(45deg);
+        color: t.$color-accent;
+    }
+
+    .answer {
+        padding: 0 0 32px;
+        color: t.$color-ink-soft;
+        font-size: 17px;
+        line-height: 1.65;
+        max-width: 64ch;
+
+        p {
+            margin: 0 0 0.8em;
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+        }
+    }
+}
+
+// ============================================================
+// FINAL CTA
+// ============================================================
+.final {
+    padding: clamp(80px, 14vh, 180px) 0 clamp(60px, 10vh, 130px);
+    border-top: 1px solid t.$color-border;
+    text-align: center;
+
+    h2 {
+        font-family: t.$font-display;
+        font-weight: 300;
+        font-size: clamp(34px, 5vw, 60px);
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        margin: 0 auto 32px;
+        max-width: 22ch;
+        font-variation-settings: 'opsz' 144, 'SOFT' 30;
+        color: t.$color-ink;
+
+        em {
+            color: t.$color-accent;
+            font-style: italic;
+            font-weight: 300;
+        }
+    }
+
+    p {
+        color: t.$color-ink-soft;
+        font-size: 18px;
+        margin: 0 auto 40px;
+        max-width: 50ch;
+        line-height: 1.6;
+    }
+}
+
+.finalActions {
+    display: flex;
+    gap: 28px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+// ============================================================
+// FOOTER
+// ============================================================
+.footer {
+    border-top: 1px solid t.$color-border;
+    padding: 32px 0 40px;
+    color: $ink-quiet;
+    font-size: 13px;
+}
+
+.footerInner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+
+    .links {
+        display: flex;
+        gap: 24px;
+
+        a {
+            color: inherit;
+            text-decoration: none;
+            transition: color 0.2s t.$ease-soft;
+
+            &:hover {
+                color: t.$color-ink;
+            }
+        }
+    }
+
+    .credit {
+        font-family: $font-mono;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+    }
+}
+
+// ============================================================
+// MOBILE FINE-TUNING
+// ============================================================
+@media (max-width: 640px) {
+    .page {
+        font-size: 17px;
+    }
+
+    .hero {
+        padding-top: clamp(40px, 8vh, 80px);
+    }
+
+    .heroSub {
+        font-size: 17px;
+    }
+
+    .letter {
+        padding: 32px 24px;
+    }
+
+    .letterBody {
+        font-size: 16px;
+        line-height: 1.7;
+    }
+
+    .pillar h3 {
+        font-size: 24px;
+    }
+
+    .diffRow h4 {
+        font-size: 19px;
+    }
+
+    .storyContent h3 {
+        font-size: 21px;
+    }
+
+    .storyMeta .num {
+        font-size: 28px;
+    }
+
+    .whoItem p {
+        font-size: 17px;
+    }
+
+    .faqItem summary {
+        font-size: 17px;
+        padding: 22px 0;
+    }
+
+    .frame p {
+        font-size: 21px;
+    }
+
+    .final h2 {
+        font-size: 32px;
+    }
+}
