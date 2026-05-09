@@ -1,0 +1,113 @@
+@use './token' as t;
+
+// SIDEBAR_WIDTH must match the actual width set on .sidebar in App.module.scss
+$sidebar-width: 280px;
+$button-size: 44px;
+$button-margin: 16px;
+
+.toggle {
+    display: none;
+
+    @media (max-width: 767px) {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+
+        position: fixed;
+        top: $button-margin;
+        left: $button-margin;
+
+        width: $button-size;
+        height: $button-size;
+        padding: 0;
+
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(1px) saturate(0.5);
+        -webkit-backdrop-filter: blur(12px) saturate(1.2);
+        border: 1px solid rgba(235, 223, 201, 0.6);
+        border-radius: 50%;
+        color: t.$color-ink;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(70, 40, 20, 0.08);
+
+        z-index: 30;
+
+        // Now `transform` is reserved for compositing layer + active state only,
+        // not for animating position.
+        transform: translateZ(0);
+        will-change: backdrop-filter, left;
+        isolation: isolate;
+
+        transition:
+            left 320ms t.$ease-soft,
+            background 200ms t.$ease-soft,
+            border-color 200ms t.$ease-soft;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: t.$color-border-strong;
+        }
+
+        &:active {
+            transform: translateZ(0) scale(0.94);
+        }
+    }
+}
+
+
+// When sidebar is open, slide the button to the sidebar's right edge.
+// translateX = (sidebar width) - (button left margin) - (button size) - (gap)
+// We want a small gap between the button and the sidebar's actual edge,
+// so the button visually overlaps the seam between sidebar and content.
+.toggleOpen {
+    @media (max-width: 767px) {
+        transform: translateX(calc(#{$sidebar-width} - #{$button-margin} - #{$button-size} - #{$button-margin}));
+
+        &:active {
+            transform: translateX(calc(#{$sidebar-width} - #{$button-margin} - #{$button-size} - #{$button-margin})) scale(0.94);
+        }
+    }
+}
+
+// ---- Icon swap animation -------------------------------------------------
+.iconWrap {
+    position: relative;
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+}
+
+.icon {
+    position: absolute;
+    inset: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+        opacity 200ms t.$ease-soft,
+        transform 320ms t.$ease-pop;
+}
+
+// Default (closed) state: show menu, hide close
+.iconMenu {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+}
+
+.iconClose {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.7);
+}
+
+// Open state: show close, hide menu
+.toggleOpen {
+    .iconMenu {
+        opacity: 0;
+        transform: rotate(90deg) scale(0.7);
+    }
+
+    .iconClose {
+        opacity: 1;
+        transform: rotate(0deg) scale(1);
+    }
+}

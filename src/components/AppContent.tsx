@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import { login, setLoading } from '../redux/slices/authSlice';
 import api from '../api/axios';
 import Sidebar from './Sidebar';
+import SidebarToggle from './SiderbarToggle';
 import MainContent from './MainContent';
 import ReportPage from './ReportPage';
 import Login from './Login';
@@ -77,23 +78,26 @@ const AppContent = () => {
     return (
         <div className={styles.appContainer}>
             {!hideSidebar && (
-                <button
-                    className={`${styles.hamburger} ${isSidebarOpen ? styles.sidebarOpen : ''}`}
-                    onClick={toggleSidebar}
-                    aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-                >
-                    {isSidebarOpen ? '✕' : '☰'}
-                </button>
-            )}
-            {!hideSidebar && (
-                <div className={`${styles.sidebar} ${isSidebarOpen ? styles.sidebarOpen : ''}`}>
-                    <Sidebar
-                        onNewNote={() => {
-                            navigate('/')
-                        }}
-                        closeSidebar={closeSidebar}
+                <>
+                    <SidebarToggle
+                        isOpen={isSidebarOpen}
+                        onToggle={toggleSidebar}
                     />
-                </div>
+
+                    {/* Mobile overlay — visible only when sidebar is open on small screens */}
+                    <div
+                        className={`${styles.overlay} ${isSidebarOpen ? styles.overlayVisible : ""}`}
+                        onClick={closeSidebar}
+                        aria-hidden="true"
+                    />
+
+                    <div className={`${styles.sidebar} ${isSidebarOpen ? styles.sidebarOpen : ''}`}>
+                        <Sidebar
+                            onNewNote={() => navigate('/home')}
+                            closeSidebar={closeSidebar}
+                        />
+                    </div>
+                </>
             )}
             <div
                 className={styles.mainContent}
