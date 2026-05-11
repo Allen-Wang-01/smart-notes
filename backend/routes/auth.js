@@ -158,7 +158,7 @@ router.post('/refresh', async (req, res) => {
             process.env.ACCESS_TOKEN_SECRET,
             { expiresIn: '15m' }
         )
-        res.json({ accessToken: newAccessToken })
+        res.json({ accessToken: newAccessToken, user: { id: user._id, username: user.username, email: user.email } })
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
             return res.status(403).json({ message: 'Refresh token expired' })
