@@ -48,22 +48,57 @@ export const getNoteStream = async (req, res) => {
 
 /**
  * CREATE: Create a new note from NewNoteCard
- * Body: { rawContent: string, category?: string }
+ * Body: { rawContent: string, sourceType: string, description: string, }
  * Returns: lightweight note with processing state
  */
 
 export const createNote = async (req, res) => {
-    const { rawContent, category = 'study' } = req.body
+    const VALID_SOURCE_TYPES = ['authored', 'saved'];
+    const DESCRIPTION_MAX_LENGTH = 300;
+
+    function normalizeDescription(value) {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') return null;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? null : trimmed;
+    }
+
+
+    const { rawContent, sourceType, description } = req.body
     const userId = req.user.userId
     if (!rawContent?.trim()) {
         return res.status(400).json({ error: 'rawContent is required' })
     }
+
+    // sourceType: default to "authored" if absent (matches schema default),
+    // but reject explicit invalid values so the client gets a clear error
+    // instead of a 500 from Mongoose's enum validator.
+    const resolvedSourceType = sourceType ?? 'authored';
+    if (!VALID_SOURCE_TYPES.includes(resolvedSourceType)) {
+        return res.status(400).json({
+            error: `Invalid sourceType: must be one of ${VALID_SOURCE_TYPES.join(', ')}`,
+        });
+    }
+
+    // description: normalize empty/whitespace strings to null so the DB
+    // holds a single canonical "no description" representation.
+    const normalizedDescription = normalizeDescription(description);
+    if (
+        normalizedDescription !== null
+        && normalizedDescription.length > DESCRIPTION_MAX_LENGTH
+    ) {
+        return res.status(400).json({
+            error: `description must be ${DESCRIPTION_MAX_LENGTH} characters or fewer`,
+        });
+    }
+
     const aiQueue = getAIQueue()
     try {
         const note = new Note({
             userId,
             rawContent: rawContent.trim(),
-            category,
+            sourceType: resolvedSourceType,
+            description: normalizedDescription,
             status: "pending",
         })
 
@@ -82,12 +117,18 @@ export const createNote = async (req, res) => {
             note: {
                 id: note._id,
                 title: 'Processing...',
-                category: note.category,
+                sourceType: note.sourceType,
                 date: note.createdAt,
                 status: "pending",
             },
         })
     } catch (error) {
+        // Surface Mongoose validation errors as 400, not 500. The pre-save
+        // checks above should catch most of them, but this is a safety net
+        // for any constraint we haven't mirrored at the controller layer.
+        if (error?.name === 'ValidationError') {
+            return res.status(400).json({ error: error.message });
+        }
         console.error('Create note error:', error)
         res.status(500).json({ error: 'Failed to create note' })
     }
