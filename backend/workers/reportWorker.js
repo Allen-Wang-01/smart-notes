@@ -84,7 +84,7 @@ export function startReportWorker() {
                     userId,
                     createdAt: { $gte: startDate, $lte: endDate },
                     summary: { $ne: null },
-                }).select('summary keywords title createdAt rawContent analysis').lean()
+                }).select('_id summary keywords title createdAt rawContent analysis sourceType description').lean()
 
                 log.info('notes_fetched', { count: notes.length })
 
