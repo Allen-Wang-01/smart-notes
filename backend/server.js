@@ -9,6 +9,7 @@ import reportRoutes from './routes/reports.js'
 import { apiRateLimiter, authRateLimiter } from './middleware/rateLimiters.js'
 import { env } from './config/env.js'
 import { checkConnection } from './config/postgres.js'
+import mcpRouter from './routes/mcp.js'
 dotenv.config();
 
 const app = express();
@@ -32,6 +33,7 @@ connectDB()
 app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api/notes', noteRouter)
 app.use('/api/reports', apiRateLimiter, reportRoutes)
+app.use('/api/mcp', mcpRouter)
 
 app.use((err, req, res, next) => {
     res.status(500).json({ message: "Internal Server Error" });
