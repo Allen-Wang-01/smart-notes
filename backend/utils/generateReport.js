@@ -41,9 +41,8 @@ function isRetryable(err) {
 export async function generateReportText(prompt) {
 
     const ReportOutputSchema = z.object({
-        summary: z.array(z.string()).min(1).max(4),
-        poeticLine: z.string().min(5).max(200),
-    })
+        paragraphs: z.array(z.string()).min(1).max(5),
+    });
 
     // Log the full prompt in development, inspect exactly what was sent to the LLM
     log.prompt('snapshot_sent_to_llm', prompt)
