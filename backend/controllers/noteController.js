@@ -2,6 +2,7 @@ import Note from '../models/Note.js'
 import { getAIQueue } from '../queues/aiQueue.js'
 import { sseManager } from '../utils/sseManager.js'
 import { aiWorkerController } from '../workers/aiWorkerController.js'
+import { db } from '../config/postgres.js'
 
 /**
  * GET /api/notes/:id/stream
@@ -137,7 +138,7 @@ export const createNote = async (req, res) => {
 /**
  * READ LIST: Get lightweight notes for Sidebar
  * Query: ?page=1&limit=20
- * Returns: [{ id, title, category, date }]
+ * Returns: [{ id, title, date }]
  */
 
 export const getNotesList = async (req, res) => {
@@ -150,7 +151,7 @@ export const getNotesList = async (req, res) => {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .select('title category createdAt')
+            .select('title createdAt')
             .lean()
 
         const total = await Note.countDocuments({ userId })
@@ -158,7 +159,6 @@ export const getNotesList = async (req, res) => {
         const formattedNotes = notes.map(note => ({
             id: note._id,
             title: note.title || 'Untitled',
-            category: note.category,
             date: note.createdAt,
         }))
 
@@ -184,7 +184,7 @@ export const getNoteById = async (req, res) => {
 
     try {
         const note = await Note.findOne({ _id: id, userId: userId })
-            .select('title content rawContent category keywords createdAt updatedAt status analysis')
+            .select('title content rawContent sourceType description keywords createdAt updatedAt status analysis')
             .lean()
 
         if (!note) {
@@ -197,7 +197,8 @@ export const getNoteById = async (req, res) => {
                 title: note.title || 'Untitled',
                 content: note.content || note.rawContent,
                 rawContent: note.rawContent,
-                category: note.category,
+                sourceType: note.sourceType,
+                description: note.description,
                 keywords: note.keywords || [],
                 created: note.createdAt,
                 updated: note.updatedAt,
@@ -221,15 +222,15 @@ export const updateNote = async (req, res) => {
     const userId = req.user.userId;
     const updates = req.body
     //validate: at least one field
-    if (!updates.title && !updates.content && !updates.category) {
-        return res.status(400).json({ error: 'No updates provided' })
+    if (!updates.title) {
+        return res.status(400).json({ error: 'No updates title provided' })
     }
     try {
         const note = await Note.findOneAndUpdate(
             { _id: id, userId: userId },
             { $set: updates },
             { new: true, runValidators: true }
-        ).select('title content category keywords createdAt updatedAt')
+        ).select('title createdAt updatedAt')
 
         if (!note) {
             return res.status(404).json({ error: 'Note not found' })
@@ -240,9 +241,6 @@ export const updateNote = async (req, res) => {
             note: {
                 id: note._id,
                 title: note.title,
-                content: note.content,
-                category: note.category,
-                keywords: note.keywords || [],
                 created: note.createdAt,
                 updated: note.updatedAt,
             },
@@ -316,21 +314,71 @@ export const regenerateNote = async (req, res) => {
 }
 
 /**
- * DELETE: Remove note from NoteEditor
+ * DELETE: Remove note from note editor
  */
 
-export const deleteNote = async (req, res) => {
-    const { id } = req.params
-    const userId = req.user.userId
-    try {
-        const note = await Note.findOneAndDelete({ _id: id, userId: userId })
 
-        if (!note) {
-            return res.status(404).json({ error: 'Note not found' })
-        }
-        res.json({ message: 'Note deleted successfully' })
-    } catch (error) {
-        console.error('Delete note error:', error)
-        res.status(500).json({ error: 'Failed to delete note' })
+/**
+ * Delete a note's embedding row from Postgres.
+ *
+ * Designed to be called AFTER the MongoDB note has been deleted. Failures
+ * are logged but never thrown — leaving an orphan embedding row is
+ * acceptable (vectorSearch.js drops results whose note_id no longer
+ * resolves in MongoDB), whereas surfacing the error to the user would
+ * make the delete feel broken when in fact the user's note is gone.
+ *
+ * Notes that predate the embedding pipeline, or whose embedding step
+ * failed during AI processing, will have no row in `note_embeddings`.
+ * Supabase treats a delete with no matching rows as a success, so this
+ * case requires no special handling.
+ */
+async function deleteNoteEmbedding(noteId) {
+    try {
+        await db.delete('note_embeddings', {
+            eq: { note_id: String(noteId) },
+        });
+    } catch (err) {
+        // Log only — do NOT rethrow. The user's note is already deleted
+        // from MongoDB; surfacing this would mislead the client. Orphan
+        // rows can be reaped by a background cleanup job.
+        console.error('embedding_cleanup_failed', {
+            noteId: String(noteId),
+            error: err.message,
+        });
     }
 }
+
+
+
+export const deleteNote = async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    try {
+        // Step 1: delete the MongoDB document.
+        // findOneAndDelete with the userId filter ensures users can only
+        // delete their own notes (defense against IDOR).
+        const note = await Note.findOneAndDelete({ _id: id, userId });
+
+        if (!note) {
+            return res.status(404).json({ error: 'Note not found' });
+        }
+
+        // Step 2: clean up the Postgres embedding. We await this so the
+        // common path is fully cleaned up before the response, but
+        // deleteNoteEmbedding swallows its own errors — see its docstring
+        // for the rationale.
+        //
+        // Cognitive units (cognitive_units table) are intentionally NOT
+        // touched here. They represent the user's aggregated profile and
+        // are decoupled from individual notes (no note_id foreign key).
+        // A single unit may have been reinforced by multiple notes and
+        // there's no clean way to roll back one note's contribution.
+        await deleteNoteEmbedding(note._id);
+
+        res.json({ message: 'Note deleted successfully' });
+    } catch (error) {
+        console.error('Delete note error:', error);
+        res.status(500).json({ error: 'Failed to delete note' });
+    }
+};
