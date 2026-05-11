@@ -11,7 +11,9 @@ import { recoverStuckJobs } from "../services/recoveryService.js";
 import { lockNote } from "../services/noteLockService.js";
 import { saveAIResult } from "../services/noteSaveService.js";
 import { rollbackNote } from "../services/noteRollbackService.js";
-import { isValidAnalysis } from "../utils/validators.js";
+import { searchRelatedNotes, saveNoteEmbedding } from "../lib/vectorSearch.js"
+import { generateEmbedding } from "../lib/embeddings.js";
+import { processCognitiveUnites } from "../lib/cognitiveUnites.js"
 dotenv.config();
 const client = new OpenAI()
 
@@ -38,7 +40,9 @@ export async function startAIWorker() {
             const generationId = job.id
             const heartbeat = createHeartbeat({ noteId, generationId })
 
+            // -----------------------------------------------------
             // 1. Atomically fetch + lock + backup
+            // -----------------------------------------------------
             const loadStart = Date.now()
 
             const { lockResult, note } = await lockNote(noteId, generationId)
@@ -56,9 +60,45 @@ export async function startAIWorker() {
                 return;
             }
 
-            // 2. Build prompt
-            const prompt = buildPrompt(note);
-            log.info('prompt_built', { promptLength: prompt.length })
+            const userId = String(note.userId)
+
+            // -----------------------------------------------------
+            // 2. Search related notes via vector similarity
+            // -----------------------------------------------------
+            let relatedNotes = []
+            try {
+                const searchStart = Date.now()
+                relatedNotes = await searchRelatedNotes({
+                    text: note.rawContent,
+                    userId,
+                    excludeNoteId: String(note._id)
+                })
+
+                log.info('related_notes_searched', {
+                    count: relatedNotes.length,
+                    durationMs: Date.now() - searchStart
+                })
+            } catch (err) {
+                // Vector search failure is non-fatal - fall back to no related notes
+                log.warn('related_notes_search_failed', {
+                    error: err.message
+                })
+                relatedNotes = []
+            }
+
+
+            // -----------------------------------------------------
+            // 3. Build prompt
+            // -----------------------------------------------------
+            const prompt = buildPrompt({ currentNote: note, relatedNotes })
+            log.info('prompt_built', {
+                promptLength: prompt.length,
+                relatedNotes: relatedNotes.length
+            })
+
+            // -----------------------------------------------------
+            // 4. Call LLM with streaming
+            // -----------------------------------------------------
 
             // --- STREAM CONTROL ---
             let streamedContent = "";  //<CONTENT> part
@@ -70,7 +110,7 @@ export async function startAIWorker() {
             let apiStart = null;
             let firstToken = null;
 
-            // 3. Call OpenAI with streaming
+
             try {
                 heartbeat.start()
                 // OpenAI call
@@ -169,35 +209,16 @@ export async function startAIWorker() {
                     }
                 }
 
-                // 4. Parse final JSON safely
-                let parsedMeta = {
-                    title: "Untitled",
-                    keywords: [],
-                    summary: null,
-                    analysis: null,
-                }
 
-                if (metadataBuffer) {
-                    try {
-                        const raw = metadataBuffer
-                            .replace(/^<METADATA>\s*/i, "")
-                            .split("</METADATA>")[0]
-                            .trim();
+                // -------------------------------------------------
+                // 5. Parse METADATA
+                // -------------------------------------------------
 
-                        const parsed = JSON.parse(raw);
-                        parsedMeta = {
-                            title: parsed.title ?? "Untitled",
-                            keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
-                            summary: parsed.summary ?? null,
-                            analysis: isValidAnalysis(parsed.analysis) ? parsed.analysis : null,
-                        }
-                        log.info('metadata_parsed', { title: parsedMeta.title })
-                    } catch (e) {
-                        log.warn('metadata_parse_failed', { error: e.message })
-                    }
-                }
+                const parsedMeta = parseMetadata(metadataBuffer, log)
 
-                // 5. Save to DB
+                // -------------------------------------------------
+                // 6. Save streamed content + title + analysis + summary to MongoDB
+                // -------------------------------------------------
                 const saveSuccess = await saveAIResult({
                     noteId,
                     generationId: job.id,
@@ -215,7 +236,9 @@ export async function startAIWorker() {
 
                 log.info('note_saved')
 
-                // 6. Notify frontend
+                // -------------------------------------------------
+                // 7. Notify frontend (done)
+                // -------------------------------------------------
                 sseManager.send(noteId, {
                     type: "done",
                     data: {
@@ -228,6 +251,24 @@ export async function startAIWorker() {
                 log.info('job_completed', {
                     totalMs: Date.now() - startTime,
                     firstTokenMs: firstToken ? firstToken - apiStart : null,
+                })
+
+                // -------------------------------------------------
+                // 8. Post-processing (fire-and-forget, non-blocking)
+                //    - Save note embedding to Supabase
+                //    - Merge cognitive units
+                // -------------------------------------------------
+                runPostProcessing({
+                    note,
+                    userId,
+                    summary: parsedMeta.summary,
+                    cognitiveUnits: parsedMeta.cognitiveUnits,
+                    log,
+                }).catch((err) => {
+                    log.error('post_processing_failed', {
+                        error: err.message,
+                        stack: err.stack,
+                    });
                 })
 
             } catch (error) {
@@ -306,4 +347,101 @@ export async function startAIWorker() {
 
     aiWorkerLogger.info('worker_started')
     return worker
+}
+
+
+// =========================================================
+// Helpers
+// =========================================================
+
+/**
+ * Parse the <METADATA>...</METADATA> block into a structured object.
+ * Returns safe defaults on any parse failure.
+ */
+function parseMetadata(metadataBuffer, log) {
+    const defaults = {
+        title: 'Untitled',
+        keywords: [],
+        summary: null,
+        analysis: null,
+        cognitiveUnites: [],
+    }
+
+    if (!metadataBuffer) {
+        return defaults
+    }
+
+    try {
+        const raw = metadataBuffer
+            .replace(/^<METADATA>\s*/i, '')
+            .split('</METADATA>')[0]
+            .trim()
+
+        const parsed = JSON.parse(raw)
+
+        const analysis = {
+            emotion: typeof parsed.emotion === 'string' ? parsed.emotion : null,
+            emotionIntensity: typeof parsed.emotionIntensity === 'number'
+                ? parsed.emotionIntensity : null,
+            cognitiveType: typeof parsed.cognitiveType === 'string'
+                ? parsed.cognitiveType : null,
+            relationship: typeof parsed.relationship === 'string'
+                ? parsed.relationship : null,
+            insightType: typeof parsed.insightType === 'string'
+                ? parsed.insightType : null,
+            themes: Array.isArray(parsed.themes) ? parsed.themes : [],
+            patternSignals: Array.isArray(parsed.patternSignals) ? parsed.patternSignals : [],
+            confidence: typeof parsed.confidence === 'number' ? parsed.confidence : null,
+        }
+
+        const result = {
+            title: typeof parsed.title === 'string' ? parsed.title : 'Untitled',
+            keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
+            summary: typeof parsed.summary === 'string' ? parsed.summary : null,
+            analysis,
+            cognitiveUnits: Array.isArray(parsed.cognitiveUnits) ? parsed.cognitiveUnits : [],
+        }
+
+        log.info('metadata_parsed', {
+            title: result.title,
+            cognitiveUnitCount: result.cognitiveUnits.length,
+        })
+
+        return result
+    } catch (e) {
+        log.warn('metadata_parse_failed', { error: e.message })
+        return defaults
+    }
+}
+
+/**
+ * Post-processing that runs after the user has been notified.
+ * Kept separate so a failure here never breaks the user-facing flow.
+ */
+async function runPostProcessing({ note, userId, summary, cognitiveUnites, log }) {
+    // 1. Generate and save note embedding.
+    // Prefer summary (richer semantic signature) over rawContent.
+    const embeddingInput = summary || note.rawContent
+    try {
+        const embedding = await generateEmbedding(embeddingInput)
+        await saveNoteEmbedding({
+            noteId: String(note._id),
+            userId,
+            embedding,
+        })
+        log.info('note_embedding_saved')
+    } catch (err) {
+        log.error('note_embedding_failed', { error: err.message })
+        // Keep going - cognitive units are independent of this
+    }
+
+    // 2. Merge cognitive units.
+    if (Array.isArray(cognitiveUnites) && cognitiveUnites.length > 0) {
+        try {
+            await processCognitiveUnites({ userId, units: cognitiveUnites })
+            log.info('cognitive_units_processed', { count: cognitiveUnites.length })
+        } catch (err) {
+            log.error('cognitive_units_failed', { error: err.message })
+        }
+    }
 }
