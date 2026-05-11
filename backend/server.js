@@ -51,9 +51,7 @@ app.listen(PORT, async () => {
     await checkConnection() // check postgreSQL connection
     if (process.env.NODE_ENV === 'production') {
         const { startWeeklyReportJob } = await import('./jobs/generateWeeklyReports.js');
-        const { startMonthlyReportJob } = await import('./jobs/generateMonthlyReports.js');
         startWeeklyReportJob()
-        startMonthlyReportJob()
         console.log('[Server] Cron jobs loaded: weekly (Sun 00:00), monthly (1st 00:05) JST');
     }
 });
