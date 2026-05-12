@@ -1,99 +1,119 @@
-# 🧠 AI-Powered Note-Taking System
-A production-oriented AI note system featuring real-time streaming, background job orchestration, and long-term reflection reports.
+# Hindsight
 
-Built with React, TypeScript, Express, BullMQ, OpenAI, MongoDB, and Server-Sent Events.
+> A personal reflective system that reads your notes and writes you a weekly letter about patterns in your own writing — and exposes that same structured context to Claude via MCP, so the LLM can engage with you with depth a generic memory feature can't reach.
 
+[![Live demo](https://img.shields.io/badge/demo-live-brightgreen)](https://your-landing-page-url.com)
+[![Status](https://img.shields.io/badge/status-in%20production-blue)]()
+[![Stack](https://img.shields.io/badge/stack-Node.js%20%C2%B7%20Python%20%C2%B7%20MCP-lightgrey)]()
+
+🔗 **Live:** [hindsight-studio.vercel.app](https://hindsight-studio.vercel.app)
+
+---
+
+## What it does
+
+You save notes — things you wrote, things you preserved from elsewhere. Hindsight processes each note through an LLM pipeline that extracts structured metadata (themes, cognitive units, intent signals) and stores embeddings for semantic retrieval.
+
+Once a week, a Python pipeline aggregates that week's notes and generates a letter-format reflection — observing patterns in your thinking that are hard to see from inside.
+
+An MCP server exposes the same structured context to Claude, so when you talk to it, it can engage with you as someone whose recent themes, written-vs-saved content, and stable concepts it actually knows.
+
+---
+
+## Why this, not Memory
+
+Generic memory features (ChatGPT Memory, Claude's memory) store **facts about users**: "user likes Python", "user lives in Tokyo". That's a useful primitive, but it misses three things that actually shape who a person is:
+
+- **Source provenance.** Did you *write* this thought, or did you *save* a Murakami poem because it moved you? A generic memory layer treats both as "things the user said." Hindsight treats them as opposite signals about you, and propagates that distinction through the entire stack — including the MCP tool responses Claude sees.
+- **Temporal trajectory.** Memory is a snapshot ("user is uncertain about career"). Hindsight is a time series ("user's stance on X moved from uncertain to decided over three weeks"). The weekly narrative is built around shifts, not states.
+- **Concept-level modelling.** Not "user knows Node.js," but "user uses Node.js for queue-backed streaming workers in their personal project." Concepts are stored as units with context, semantically merged so they accumulate meaning over time instead of fragmenting into duplicates.
+
+The weekly letter and the MCP server are two surfaces onto the same underlying layer.
+
+Platform memory optimises for the next conversation. Hindsight optimises for the user's understanding of themselves — and lives outside any single LLM vendor.
+
+---
 
 ## Architecture
-The diagram below shows the end-to-end data flow of AI note processing, from user input to real-time streaming and persistent storage.
 
-- API layer remains responsive
-- All LLM workloads run asynchronously
-- Streaming and persistence are handled independently to ensure consistency
-![High-Level Architecture](./docs/images/High-Level%20Architecture%20Diagram.png)
+Three components share one cognitive layer. New features extend the system by adding queries against that layer, not by adding new tables.
 
-## ✨ Why This Project Stands Out
+```mermaid
+flowchart TB
+    User((User))
+    Claude((Claude /<br/>ChatGPT))
 
-This is not a simple AI demo or CRUD application.
-It is a production-oriented AI system designed to handle **real-time LLM streaming**, 
-**asynchronous background processing**, and **long-term data consistency**-the same challenges faced by AI features in real-world products.
+    NoteWorker["<b>Note Worker</b> (Node.js + BullMQ)<br/>idempotent · locked · SSE-streamed"]
 
-**What makes it different:**
-- **Real-time AI streaming UX**  
-  Users see notes being generated token by token via Server-Sent Events (SSE), while the system guarantees that only validated, complete results are persisted.
-- **Asynchronous, retry-safe AI pipeline**  
-  All LLM workloads run in background workers (BullMQ + Redis) with deterministic job IDs, ensuring idempotency, safe retries, and no duplicate generation.
-- **Designed for reliability, not just speed**  
-  Partial AI outputs are never saved. Failures are tracked, retried, or rolled back to maintain data integrity under crashes or API errors.
-- **AI-powered reflection, not just summarization**  
-  Beyond individual notes, the system generates **weekly and monthly AI reflections** inspired by Spotify Wrapped—helping users understand patterns, habits, and progress over time.
-- **Built with production constraints in mind**  
-  Token-efficient prompt design, schema-validated LLM output, and a flexible data model support scalability, cost control, and future feature evolution.
+    subgraph CognitiveLayer["<b>One Cognitive Layer</b>"]
+        Mongo[("MongoDB<br/>notes + metadata")]
+        Vector[("Postgres + pgvector<br/>embeddings + concepts")]
+    end
 
-This project demonstrates how to build **AI features that are interactive, reliable, and maintainable**—not just impressive in a demo, but viable in production.
+    ReportWorker["<b>Report Worker</b> (Node.js)<br/>queries data · spawns Python<br/>calls LLM · saves letter"]
+    Pipeline["<b>Narrative Pipeline</b> (Python)<br/>orchestrator · 5 aggregators<br/>silence discipline"]
+    Letter["Weekly Letter"]
 
-## 📝 AI-Powered Note Organization (Core Feature)
+    MCP["<b>MCP Server</b> (Anthropic SDK)<br/>4 purpose-designed tools"]
 
-The system transforms raw, unstructured notes into **clear, structured, and reusable knowledge** using LLMs.
-- Supports multiple note contexts: **meeting, study, interview**
-- Applies scenario-specific prompts for higher-quality results
-- Produces clean, well-structured Markdown for the end user
-- Persists summaries and keywords as internal metadata for token-efficient downstream AI processing
+    User -->|saves notes| NoteWorker
+    NoteWorker --> Mongo
+    NoteWorker --> Vector
 
-### Real-Time, User-Centric Experience
-- Notes are generated with **token-level streaming** via Server-Sent Events (SSE)
-- Users see content appear progressively, reducing perceived latency
-- Only validated, complete outputs are persisted to the database
+    Mongo -.weekly.-> ReportWorker
+    Vector -.weekly.-> ReportWorker
+    ReportWorker <-->|stdin/stdout JSON| Pipeline
+    ReportWorker --> Letter
+    Letter --> User
 
-### Built for Reliability
-- LLM processing runs asynchronously in background workers
-- Partial or malformed AI outputs are never saved
-- Automatic retries and rollback ensure data consistency
+    Mongo --> MCP
+    Vector --> MCP
+    MCP <-->|MCP protocol| Claude
+    User -.uses.-> Claude
 
-## 📊 AI-Powered Weekly & Monthly Reports
-Core Differentiation: Reflection, Not Just Summaries
+    classDef layer fill:#f5f3ff,stroke:#7c3aed,stroke-width:2px,color:#1f2937
+    class CognitiveLayer layer
+```
 
-**Beyond individual note summaries, the system generates AI-powered weekly and monthly reflections inspired by Spotify Wrapped.**
-- Aggregates user activity across time (notes, categories, frequency)
+The note pipeline is real-time and per-note. The narrative pipeline is batch and per-week. The MCP server is on-demand and per-conversation. They share the same data substrate but have different access patterns — and getting the substrate right (concept-level storage, semantic similarity over string match, separation of volatile metadata from structured retrieval) is what makes the three-component story work.
 
-- Extracts recurring themes and behavior patterns
+---
 
-- Produces a human-readable, encouraging narrative using an LLM
+## Engineering details worth a closer look
 
-The focus is **reflection and motivation**, not dashboards or raw analytics.
+### MCP tool descriptions as prompt engineering
 
-**Design Highlights**
-- **Non-streaming by design**
-Reports are generated asynchronously, persisted, and loaded on demand for reliability and simplicity.
+The MCP server exposes 4 tools to Claude, but the interesting work isn't the API surface — it's the descriptions. Each tool's description tells Claude *how to think about the data*, not just what it returns:
 
-- **Idempotent & retry-safe generation**
-Each report is uniquely identified by (userId, type, periodKey) and safely retried via BullMQ.
+> *"sourceType: 'authored' means the user wrote this themselves; 'saved' means the user preserved external content. For 'saved' notes WITHOUT a description, do NOT treat the summary as the user's own thoughts."*
 
-- **Graceful handling of low activity**
-When data is insufficient, the system skips LLM calls and returns an empathetic fallback message.
+This isn't documentation — it's instruction. The tool descriptions are where Claude learns that source provenance matters, that emotional trajectory should be drawn only from authored notes, that a saved poem isn't a confession. Whether and how Claude uses the context layer correctly depends on this prompt-engineering surface as much as on the data itself.
 
-Why This Matters
+### The "why you saved it" design pivot
 
-This feature demonstrates product thinking, thoughtful AI UX, and scalable system design—turning raw notes into long-term insight rather than isolated summaries.
+The first version of Hindsight assumed content would reveal user intent. It didn't. A personal essay and a saved Murakami poem look identical to an LLM — both are evocative prose in first person. The system was reading saved external content as confessional self-writing, and the weekly letters drifted accordingly.
 
-## 🧠 Key Design Decisions
+The fix wasn't to make the LLM smarter. **No amount of inference can break a fundamental ambiguity in the input.** The fix was two minimal user inputs: `sourceType` (one click — did you write this or save it?) and an optional one-line description (why is this meaningful to you?). These two fields propagate through the entire pipeline as the highest-priority signals — over LLM inference, over content analysis. Engineering instinct said "make the LLM smarter." Product instinct said "give the user a way to express intent." The second was correct.
 
-### 1. Asynchronous AI Processing via Background Workers
-LLM workloads are fully decoupled from the request–response cycle using BullMQ, ensuring a responsive API and enabling safe retries, idempotency, and horizontal scaling.
+### Concept store with semantic merging
 
-### 2. Real-Time Streaming with SSE (Not WebSockets)
-Server-Sent Events provide low-latency, one-directional streaming with simpler infrastructure and automatic reconnection, making them a better fit than WebSockets for AI token streaming.
+Each note generates 1–5 cognitive units — concepts plus the user's relationship to them, like `{concept: "Node.js", context: "used in BullMQ-backed streaming workers"}`. When new units come in, naive string match fails ("Node.js" and "nodejs" diverge), so merging is done by embedding similarity with a 0.92 threshold.
 
-### 3. Data Consistency Over Partial AI Results
-Partial or malformed AI outputs are never persisted. Only fully validated results are saved, with rollback and retry logic to guarantee long-term data integrity.
+Each merge reinforces the concept's confidence with a convergence formula — `new = old + (1 − old) × 0.3` — so each reinforcement closes 30% of the gap to certainty. Context strings accumulate (bounded at 1000 chars to handle years of input). The result: "Node.js" becomes a single concept with thickening context, instead of fragmenting into a dozen near-duplicates. This is what turns Claude's responses from "you know Node.js" into "you use Node.js for queue-backed automation in your personal project."
 
-### 4. Token-Efficient AI Data Modeling
-Notes persist lightweight summaries and keywords as internal metadata, allowing downstream AI tasks (e.g. reports) to avoid reprocessing full note content and reduce token usage.
+---
 
-### 5. Non-Streaming AI Reports by Design
-Weekly and monthly reports are generated asynchronously, persisted, and loaded on demand. This avoids unnecessary streaming complexity for content that is not time-sensitive.
+## Stack & Status
 
-### 6. MongoDB for AI-Generated, Evolving Data
-AI outputs are semi-structured and evolve over time. MongoDB’s flexible schema, nested documents, and atomic updates align naturally with this workflow.
+- **Backend:** Node.js · Express · BullMQ · MongoDB · Redis
+- **Pipelines:** Python · pandas · Pydantic
+- **Vector store:** Postgres + pgvector (Supabase)
+- **Frontend:** React · TypeScript · Vite · SSE
+- **AI:** OpenAI API · Anthropic MCP SDK
+- **Infra:** Fly.io · Vercel
+
+**Status:** In production. Solo-built. Note pipeline, weekly narrative, MCP server, and landing page are all live. Roadmap: real OAuth for the MCP layer (currently long-lived bearer tokens), broader LLM provider support, and exposing the cognitive layer to a wider tool surface.
+
+---
 
 
