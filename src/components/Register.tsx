@@ -84,6 +84,19 @@ const Register: React.FC = () => {
         }
     }
 
+    const handleDemoLogin = async () => {
+        try {
+            const response = await api.post(`/auth/demo-login`)
+            const { user, accessToken } = response.data
+            dispatch(login({ user, accessToken }))
+            navigate('/home')
+        } catch (error: any) {
+            const errorMessage = error.response?.data?.message || 'Demo Login failed. Please try again'
+            setErrors({ server: errorMessage })
+            toast.error(errorMessage)
+        }
+    }
+
     if (isLoading) {
         return <LoadingScreen />;
     }
@@ -142,6 +155,13 @@ const Register: React.FC = () => {
 
                         <button type="submit" className={styles.button}>
                             Register
+                        </button>
+
+                        <button
+                            className={styles.demoLoginBtn}
+                            onClick={handleDemoLogin}
+                        >
+                            Try Demo Account
                         </button>
                     </form>
 
