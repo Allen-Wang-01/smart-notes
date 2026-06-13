@@ -21,7 +21,7 @@ const MERGE_THRESHOLD = 0.92;
  * @param {string} params.userId
  * @param {Array} params.units - Array of { concept, context, tags, confidence }.
  */
-export async function processCognitiveUnites({ userId, units }) {
+export async function processCognitiveUnits({ userId, units }) {
     if (!Array.isArray(units) || units.length === 0) {
         return
     }
@@ -87,7 +87,7 @@ async function mergeUnit({ existing, incoming }) {
     // Truncate if the merged context grows too long.
     const MAX_CONTEXT_LENGTH = 1000
     const finalContext = mergedContext.length > MAX_CONTEXT_LENGTH
-        ? mergedContext.slice(mergedContext - MAX_CONTEXT_LENGTH)
+        ? mergedContext.slice(mergedContext.length - MAX_CONTEXT_LENGTH)
         : mergedContext
 
     const mergedTags = unionTags(existing.tags ?? [], incoming.tags ?? [])
@@ -96,7 +96,7 @@ async function mergeUnit({ existing, incoming }) {
     // Each mention closes ~30% of the remaining gap to 1
     const boostedConfidence = Math.min(
         1,
-        (existing.confidence ?? 0.5) + (1 - (existing.confidence ?? 0.5) * 0.3)
+        (existing.confidence ?? 0.5) + (1 - existing.confidence * 0.3)
     )
     await db.update(
         'cognitive_units',

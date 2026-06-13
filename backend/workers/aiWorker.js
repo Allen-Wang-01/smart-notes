@@ -13,7 +13,7 @@ import { saveAIResult } from "../services/noteSaveService.js";
 import { rollbackNote } from "../services/noteRollbackService.js";
 import { searchRelatedNotes, saveNoteEmbedding } from "../lib/vectorSearch.js"
 import { generateEmbedding } from "../lib/embeddings.js";
-import { processCognitiveUnites } from "../lib/cognitiveUnites.js"
+import { processCognitiveUnits } from "../lib/cognitiveUnites.js"
 dotenv.config();
 const client = new OpenAI()
 
@@ -438,7 +438,7 @@ async function runPostProcessing({ note, userId, summary, cognitiveUnites, log }
     // 2. Merge cognitive units.
     if (Array.isArray(cognitiveUnites) && cognitiveUnites.length > 0) {
         try {
-            await processCognitiveUnites({ userId, units: cognitiveUnites })
+            await processCognitiveUnits({ userId, units: cognitiveUnites })
             log.info('cognitive_units_processed', { count: cognitiveUnites.length })
         } catch (err) {
             log.error('cognitive_units_failed', { error: err.message })
