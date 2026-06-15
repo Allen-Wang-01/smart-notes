@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
+import { hashRefreshToken } from '../lib/refreshTokenHash.js'
 
 export async function loginWithCredentials({ email, password }) {
     if (!email || !password) {
@@ -29,8 +30,8 @@ export async function loginWithCredentials({ email, password }) {
         { expiresIn: '7d' }
     )
 
-    // persist refresh token 
-    user.refreshToken = refreshToken;
+    // persist hash, not raw token
+    user.refreshToken = hashRefreshToken(refreshToken);
     await user.save()
 
     return {

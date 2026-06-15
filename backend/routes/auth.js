@@ -5,6 +5,18 @@ import User from '../models/User.js'
 import { env } from '../config/env.js'
 const router = express.Router()
 import { loginWithCredentials } from '../services/authService.js'
+import {
+    hashRefreshToken,
+    verifyRefreshToken,
+} from '../lib/refreshTokenHash.js'
+
+const REFRESH_COOKIE_OPTIONS = {
+    httpOnly: true,
+    secure: env.cookie.secure,
+    sameSite: env.cookie.sameSite,
+    maxAge: env.cookie.maxAge,
+    path: '/',
+}
 
 //register
 router.post('/register', async (req, res) => {
@@ -45,18 +57,11 @@ router.post('/register', async (req, res) => {
             process.env.REFRESH_TOKEN_SECRET,
             { expiresIn: '7d' }
         )
-        user.refreshToken = refreshToken
+        user.refreshToken = hashRefreshToken(refreshToken)
 
         await user.save()
 
-        //http-only cookie
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: env.cookie.secure, //false(http) in development environment, true(https) in production
-            sameSite: env.cookie.sameSite, //lax in development, strict in production
-            maxAge: env.cookie.maxAge, // 7days
-            path: '/',
-        })
+        res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS)
 
         res.status(201).json({
             message: 'User registered successfully',
@@ -77,14 +82,7 @@ router.post('/login', async (req, res) => {
         const { accessToken, refreshToken, user } =
             await loginWithCredentials({ email, password })
 
-        //http-only cookie
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: env.cookie.secure, //false(http) in development environment, true(https) in production
-            sameSite: env.cookie.sameSite, //lax in development, strict in production
-            maxAge: env.cookie.maxAge, // 7days
-            path: '/',
-        })
+        res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS)
 
         //return tokens
         res.json({
@@ -116,13 +114,7 @@ router.post('/demo-login', async (req, res) => {
         const { accessToken, refreshToken, user } =
             await loginWithCredentials({ email, password });
 
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: env.cookie.secure,
-            sameSite: env.cookie.sameSite,
-            maxAge: env.cookie.maxAge,
-            path: '/',
-        });
+        res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
 
         res.json({
             accessToken,
@@ -146,18 +138,28 @@ router.post('/refresh', async (req, res) => {
         //verify refreshToken
         const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET)
 
-        //compare with the refreshToken in database
+        //constant-time hash comparison against stored hash
         const user = await User.findById(decoded.userId)
-        if (!user || user.refreshToken !== refreshToken) {
+        if (!user || !verifyRefreshToken(refreshToken, user.refreshToken)) {
             return res.status(403).json({ message: 'Invalid refresh token' })
         }
 
-        //generate a new access token
+        //rotate: issue new access token and new refresh token
         const newAccessToken = jwt.sign(
             { userId: user._id, username: user.username },
             process.env.ACCESS_TOKEN_SECRET,
             { expiresIn: '15m' }
         )
+        const newRefreshToken = jwt.sign(
+            { userId: user._id },
+            process.env.REFRESH_TOKEN_SECRET,
+            { expiresIn: '7d' }
+        )
+
+        user.refreshToken = hashRefreshToken(newRefreshToken)
+        await user.save()
+
+        res.cookie('refreshToken', newRefreshToken, REFRESH_COOKIE_OPTIONS)
         res.json({ accessToken: newAccessToken, user: { id: user._id, username: user.username, email: user.email } })
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
@@ -180,7 +182,7 @@ router.post('/logout', async (req, res) => {
 
     if (token) {
         await User.updateOne(
-            { refreshToken: token },
+            { refreshToken: hashRefreshToken(token) },
             { $set: { refreshToken: null } }
         );
     }
