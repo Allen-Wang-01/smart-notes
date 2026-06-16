@@ -13,7 +13,7 @@ import { saveAIResult } from "../services/noteSaveService.js";
 import { rollbackNote } from "../services/noteRollbackService.js";
 import { searchRelatedNotes, saveNoteEmbedding } from "../lib/vectorSearch.js"
 import { generateEmbedding } from "../lib/embeddings.js";
-import { processCognitiveUnits } from "../lib/cognitiveUnites.js"
+import { processCognitiveUnits } from "../lib/cognitiveUnits.js"
 dotenv.config();
 const client = new OpenAI()
 
@@ -364,7 +364,7 @@ function parseMetadata(metadataBuffer, log) {
         keywords: [],
         summary: null,
         analysis: null,
-        cognitiveUnites: [],
+        cognitiveUnits: [],
     }
 
     if (!metadataBuffer) {
@@ -418,7 +418,7 @@ function parseMetadata(metadataBuffer, log) {
  * Post-processing that runs after the user has been notified.
  * Kept separate so a failure here never breaks the user-facing flow.
  */
-async function runPostProcessing({ note, userId, summary, cognitiveUnites, log }) {
+async function runPostProcessing({ note, userId, summary, cognitiveUnits, log }) {
     // 1. Generate and save note embedding.
     // Prefer summary (richer semantic signature) over rawContent.
     const embeddingInput = summary || note.rawContent
@@ -436,10 +436,10 @@ async function runPostProcessing({ note, userId, summary, cognitiveUnites, log }
     }
 
     // 2. Merge cognitive units.
-    if (Array.isArray(cognitiveUnites) && cognitiveUnites.length > 0) {
+    if (Array.isArray(cognitiveUnits) && cognitiveUnits.length > 0) {
         try {
-            await processCognitiveUnits({ userId, units: cognitiveUnites })
-            log.info('cognitive_units_processed', { count: cognitiveUnites.length })
+            await processCognitiveUnits({ userId, units: cognitiveUnits })
+            log.info('cognitive_units_processed', { count: cognitiveUnits.length })
         } catch (err) {
             log.error('cognitive_units_failed', { error: err.message })
         }

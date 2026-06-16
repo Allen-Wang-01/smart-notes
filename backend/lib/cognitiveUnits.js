@@ -96,7 +96,7 @@ async function mergeUnit({ existing, incoming }) {
     // Each mention closes ~30% of the remaining gap to 1
     const boostedConfidence = Math.min(
         1,
-        (existing.confidence ?? 0.5) + (1 - existing.confidence * 0.3)
+        (existing.confidence ?? 0.5) + (1 - existing.confidence) * 0.3
     )
     await db.update(
         'cognitive_units',

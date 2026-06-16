@@ -95,7 +95,7 @@ def _score_row(row: pd.Series, mean_length: float) -> float:
         score += length_norm * WEIGHTS["length_normalized"] / 3.0
 
     if row.get("relationship") in ("evolution", "contradiction"):
-        score = WEIGHTS["evolution_bonus"]
+        score += WEIGHTS["evolution_bonus"]
 
     confidence = row.get("confidence")
     if confidence is not None and not pd.isna(confidence):
