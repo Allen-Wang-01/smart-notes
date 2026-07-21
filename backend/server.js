@@ -10,6 +10,7 @@ import { apiRateLimiter, authRateLimiter } from './middleware/rateLimiters.js'
 import { env } from './config/env.js'
 import { checkConnection } from './config/postgres.js'
 import mcpRouter from './routes/mcp.js'
+import oauthDiscoveryRouter from './routes/oauthDiscovery.js'
 dotenv.config();
 
 const app = express();
@@ -30,6 +31,8 @@ app.use(express.json({ limit: '1mb' }));
 
 connectDB()
 
+// /.well-known/* must be at root — no prefix — so OAuth clients can discover them from MCP_BASE_URL
+app.use(oauthDiscoveryRouter)
 app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api/notes', noteRouter)
 app.use('/api/reports', apiRateLimiter, reportRoutes)
