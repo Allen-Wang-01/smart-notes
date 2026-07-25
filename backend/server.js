@@ -11,6 +11,7 @@ import { env } from './config/env.js'
 import { checkConnection } from './config/postgres.js'
 import mcpRouter from './routes/mcp.js'
 import oauthDiscoveryRouter from './routes/oauthDiscovery.js'
+import savedMemoriesRouter from './routes/savedMemories.js'
 dotenv.config();
 
 const app = express();
@@ -37,6 +38,7 @@ app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api/notes', noteRouter)
 app.use('/api/reports', apiRateLimiter, reportRoutes)
 app.use('/api/mcp', mcpRouter)
+app.use('/api/saved-memories', savedMemoriesRouter)
 
 app.use((err, req, res, next) => {
     res.status(500).json({ message: "Internal Server Error" });
