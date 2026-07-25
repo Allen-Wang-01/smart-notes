@@ -29,6 +29,9 @@ dist-ssr
 *.sln
 *.sw?
 
+# Local development notes (not for version control)
+dev-notes/
+
 # Python
 .venv/
 venv/
