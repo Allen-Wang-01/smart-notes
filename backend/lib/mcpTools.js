@@ -2,6 +2,7 @@ import { db } from "../config/postgres.js"
 import Note from "../models/Note.js"
 import { generateEmbedding } from "./embeddings.js"
 import { searchRelatedNotes } from "./vectorSearch.js"
+import { searchSavedMemories, saveMemory } from "./savedMemory.js"
 
 // =====================================================
 // Tool: search_personal_knowledge
@@ -193,6 +194,132 @@ export async function getFullContext({ userId, topic }) {
             emotions: recentContext.emotions,
         },
         relevantNotes: relevantSpecifics.results,
+    }
+}
+
+// =====================================================
+// Tool: list_saved_memory_topics
+// Returns a directory-level overview of all topics the
+// user has saved memories under. No content included.
+// =====================================================
+export async function listSavedMemoryTopics({ userId }) {
+    const result = await db.select('saved_memories', {
+        eq: { user_id: String(userId) },
+    })
+    const rows = result?.rows ?? []
+
+    // Group by topic in JS — personal memory sets are small.
+    const topicMap = new Map()
+    for (const row of rows) {
+        const entry = topicMap.get(row.topic)
+        if (entry) {
+            entry.count++
+            if (row.created_at > entry.lastUpdated) {
+                entry.lastUpdated = row.created_at
+            }
+        } else {
+            topicMap.set(row.topic, {
+                topic: row.topic,
+                count: 1,
+                lastUpdated: row.created_at,
+            })
+        }
+    }
+
+    const topics = Array.from(topicMap.values())
+        .sort((a, b) => (b.lastUpdated > a.lastUpdated ? 1 : -1))
+
+    return { topicCount: topics.length, topics }
+}
+
+// =====================================================
+// Tool: get_saved_memory_by_topic
+// Returns all entries under a specific topic, sorted
+// oldest-to-newest. No filtering, no truncation.
+// =====================================================
+export async function getSavedMemoryByTopic({ userId, topic }) {
+    const result = await db.select('saved_memories', {
+        eq: { user_id: String(userId), topic },
+    })
+    const rows = result?.rows ?? []
+
+    // Sort chronologically — older entries provide context for newer ones.
+    const entries = rows
+        .sort((a, b) => (a.created_at < b.created_at ? -1 : 1))
+        .map(row => ({
+            content: row.content,
+            source: row.source,
+            tags: row.tags,
+            createdAt: row.created_at,
+        }))
+
+    return { topic, entryCount: entries.length, entries }
+}
+
+// =====================================================
+// Tool: search_saved_memory
+// Cross-topic semantic search. Returns hits grouped by
+// topic with similarity scores. Delegates to
+// searchSavedMemories so no retrieval logic lives here.
+// =====================================================
+export async function searchSavedMemory({ userId, query, threshold = 0.3, matchCount = 20 }) {
+    const { topics, raw } = await searchSavedMemories({
+        userId: String(userId),
+        query,
+        threshold,
+        matchCount,
+    })
+
+    return {
+        query,
+        hitCount: raw.length,
+        topics: topics.map(group => ({
+            topic: group.topic,
+            entries: group.entries.map(e => ({
+                content: e.content,
+                source: e.source,
+                tags: e.tags,
+                createdAt: e.created_at,
+                similarity: e.similarity,
+            })),
+        })),
+    }
+}
+
+// =====================================================
+// Tool: save_memory
+// Writes one entry into saved_memories with source='claude'.
+// Returns an explicit success/failure object so Claude can
+// report the outcome to the user — never fire-and-forget.
+// =====================================================
+/** @param {{ userId: string, topic: string, content: string, tags?: string[] }} params */
+export async function saveSavedMemory({ userId, topic, content, tags = [] }) {
+    if (!topic || !content) {
+        return {
+            success: false,
+            error: 'topic and content are required',
+        }
+    }
+
+    try {
+        const row = await saveMemory({
+            userId,
+            topic,
+            content,
+            source: 'claude',
+            tags,
+        })
+        return {
+            success: true,
+            topic: row.topic,
+            id: row.id,
+            createdAt: row.created_at,
+        }
+    } catch (err) {
+        return {
+            success: false,
+            error: err?.message ?? 'Failed to save memory',
+        }
     }
 }
 
