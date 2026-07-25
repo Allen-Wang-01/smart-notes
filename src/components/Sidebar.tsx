@@ -98,6 +98,15 @@ const Sidebar = ({ closeSidebar, onNewNote }: SidebarProps) => {
                 >
                     Letters
                 </button>
+                <button
+                    className={styles.summaryButton}
+                    onClick={() => {
+                        navigate("/memory")
+                        if (closeSidebar) closeSidebar()
+                    }}
+                >
+                    Memory
+                </button>
                 <button className={styles.newNoteButton} onClick={() => {
                     onNewNote()
                     if (closeSidebar) closeSidebar()

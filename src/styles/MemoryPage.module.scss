@@ -1,0 +1,292 @@
+@use './token' as t;
+
+// ---- Page shell ------------------------------------------------------------
+.page {
+    width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+    padding: 32px 20px 56px;
+    font-family: t.$font-body;
+    color: t.$color-ink;
+
+    @media (max-width: 480px) {
+        padding: 20px 14px 40px;
+    }
+}
+
+.shell {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+}
+
+// ---- Page header -----------------------------------------------------------
+.header {
+    padding-bottom: 28px;
+    margin-bottom: 28px;
+    border-bottom: 1px solid rgba(217, 199, 166, 0.4);
+}
+
+.title {
+    margin: 0 0 4px;
+    font-family: t.$font-display;
+    font-size: 26px;
+    font-weight: 400;
+    color: t.$color-ink;
+    letter-spacing: -0.01em;
+    font-variation-settings: "SOFT" 60, "opsz" 28;
+}
+
+.subtitle {
+    margin: 0;
+    font-size: 14px;
+    color: t.$color-ink-mute;
+}
+
+// ---- State views (loading / empty / error) ---------------------------------
+.stateCenter {
+    text-align: center;
+    padding: 64px 24px;
+}
+
+.stateTitle {
+    margin: 0 0 8px;
+    font-family: t.$font-display;
+    font-size: 20px;
+    font-weight: 400;
+    color: t.$color-ink;
+    letter-spacing: -0.005em;
+}
+
+.stateMuted {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: t.$color-ink-soft;
+}
+
+.stateError {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: t.$color-danger;
+}
+
+.emptyIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(201, 130, 74, 0.08);
+    color: t.$color-accent;
+    margin-bottom: 20px;
+}
+
+// ---- Loading dots ----------------------------------------------------------
+.dots {
+    display: inline-flex;
+    gap: 6px;
+    margin-bottom: 16px;
+
+    span {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: t.$color-accent;
+        animation: dotPulse 1.4s ease-in-out infinite;
+
+        &:nth-child(2) { animation-delay: 0.2s; }
+        &:nth-child(3) { animation-delay: 0.4s; }
+    }
+}
+
+@keyframes dotPulse {
+    0%, 60%, 100% { opacity: 0.25; transform: scale(0.85); }
+    30% { opacity: 1; transform: scale(1); }
+}
+
+// ---- Topic list view -------------------------------------------------------
+.topicList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.topicCard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    background: t.$color-surface;
+    border: 1px solid t.$color-border;
+    border-radius: t.$radius-md;
+    cursor: pointer;
+    transition:
+        border-color 180ms t.$ease-soft,
+        box-shadow 180ms t.$ease-soft,
+        background 180ms t.$ease-soft;
+    text-align: left;
+    width: 100%;
+    font-family: inherit;
+
+    &:hover {
+        border-color: t.$color-border-strong;
+        box-shadow: t.$shadow-sm;
+        background: t.$color-accent-soft;
+    }
+
+    &:active {
+        background: rgba(201, 130, 74, 0.12);
+    }
+}
+
+.topicName {
+    flex: 1;
+    min-width: 0;
+    font-size: 15px;
+    font-weight: 500;
+    color: t.$color-ink;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.topicMeta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.topicCount {
+    font-size: 12px;
+    color: t.$color-ink-mute;
+    white-space: nowrap;
+}
+
+.topicArrow {
+    color: t.$color-ink-mute;
+    display: flex;
+    align-items: center;
+}
+
+// ---- Detail view -----------------------------------------------------------
+.backButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px 6px 6px;
+    background: transparent;
+    border: 0;
+    color: t.$color-ink-soft;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 999px;
+    margin-bottom: 24px;
+    transition: color 180ms t.$ease-soft, background 180ms t.$ease-soft;
+
+    &:hover {
+        color: t.$color-ink;
+        background: t.$color-surface-sunk;
+    }
+}
+
+.detailHeader {
+    margin-bottom: 24px;
+}
+
+.detailTitle {
+    margin: 0 0 4px;
+    font-family: t.$font-display;
+    font-size: 22px;
+    font-weight: 400;
+    color: t.$color-ink;
+    letter-spacing: -0.008em;
+    font-variation-settings: "SOFT" 60, "opsz" 24;
+    word-break: break-word;
+}
+
+.detailMeta {
+    font-size: 13px;
+    color: t.$color-ink-mute;
+}
+
+.entryList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.entryCard {
+    padding: 16px 18px;
+    background: t.$color-surface;
+    border: 1px solid t.$color-border;
+    border-radius: t.$radius-md;
+    animation: entryFadeIn 280ms t.$ease-soft both;
+}
+
+@keyframes entryFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.entryHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.entryDate {
+    font-size: 12px;
+    color: t.$color-ink-mute;
+}
+
+.sourceBadge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.sourceBadgeUser {
+    background: rgba(201, 130, 74, 0.12);
+    color: t.$color-accent-deep;
+}
+
+.sourceBadgeClaude {
+    background: rgba(46, 31, 20, 0.07);
+    color: t.$color-ink-soft;
+}
+
+.entryContent {
+    font-size: 15px;
+    line-height: 1.7;
+    color: t.$color-ink;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.entryTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.tag {
+    padding: 2px 8px;
+    background: t.$color-surface-sunk;
+    border: 1px solid t.$color-border;
+    border-radius: 999px;
+    font-size: 12px;
+    color: t.$color-ink-soft;
+}

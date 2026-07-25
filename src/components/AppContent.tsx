@@ -11,6 +11,7 @@ import ReportPage from './ReportPage';
 import Login from './Login';
 import Register from './Register';
 import NotePage from './NotePage';
+import MemoryPage from './MemoryPage';
 import ProtectedRoute from './ProtectedRoute';
 import styles from '../styles/Main.module.scss'
 import LandingPage from '../pages/Landing/LandingPage'
@@ -125,6 +126,14 @@ const AppContent = () => {
                         element={
                             <ProtectedRoute>
                                 <NotePage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/memory"
+                        element={
+                            <ProtectedRoute>
+                                <MemoryPage />
                             </ProtectedRoute>
                         }
                     />
