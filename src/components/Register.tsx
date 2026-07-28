@@ -7,6 +7,7 @@ import { useAppSelector } from '../redux/hooks';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import LoadingScreen from './LoadingScreen';
+import { useDemoLogin } from '../hooks/useDemoLogin';
 
 
 const Register: React.FC = () => {
@@ -84,18 +85,7 @@ const Register: React.FC = () => {
         }
     }
 
-    const handleDemoLogin = async () => {
-        try {
-            const response = await api.post(`/auth/demo-login`)
-            const { user, accessToken } = response.data
-            dispatch(login({ user, accessToken }))
-            navigate('/home')
-        } catch (error: any) {
-            const errorMessage = error.response?.data?.message || 'Demo Login failed. Please try again'
-            setErrors({ server: errorMessage })
-            toast.error(errorMessage)
-        }
-    }
+    const handleDemoLogin = useDemoLogin((message) => setErrors({ server: message }))
 
     if (isLoading) {
         return <LoadingScreen />;
