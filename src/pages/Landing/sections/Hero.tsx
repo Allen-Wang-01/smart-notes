@@ -1,7 +1,9 @@
 import styles from '../LandingPage.module.scss';
 import { useReveal } from '../useReveal';
+import { useDemoLogin } from '../../../hooks/useDemoLogin';
 
 export default function Hero() {
+    const handleDemoLogin = useDemoLogin();
     const eyebrow = useReveal(styles);
     const heading = useReveal(styles);
     const sub = useReveal(styles);
@@ -57,6 +59,22 @@ export default function Hero() {
                     <a href="#letter" className={styles.btnQuiet}>
                         Read a sample letter
                     </a>
+                </div>
+
+                <div
+                    className={`${styles.heroDemoRow} ${styles.reveal} ${actions.revealClass}`}
+                    style={{ transitionDelay: '320ms' }}
+                >
+                    <button
+                        type="button"
+                        className={styles.btnDemo}
+                        onClick={handleDemoLogin}
+                    >
+                        Try demo account
+                    </button>
+                    <span className={styles.demoHint}>
+                        No sign-up needed — log straight in and look around
+                    </span>
                 </div>
             </div>
         </section>

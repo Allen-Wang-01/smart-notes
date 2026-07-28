@@ -317,6 +317,50 @@ $ink-faint: rgba(46, 31, 20, 0.38);
     font-size: 15px;
 }
 
+.heroDemoRow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 22px;
+}
+
+.btnDemo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 20px;
+    background: t.$color-accent-soft;
+    color: t.$color-accent-deep;
+    border: 1px solid t.$color-accent;
+    border-radius: t.$radius-sm;
+    font-family: $font-serif-body;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s t.$ease-soft,
+        border-color 0.2s t.$ease-soft,
+        color 0.2s t.$ease-soft;
+
+    &:hover {
+        background: t.$color-accent;
+        border-color: t.$color-accent;
+        color: t.$color-canvas;
+    }
+
+    &:focus-visible {
+        outline: 2px solid t.$color-accent;
+        outline-offset: 3px;
+    }
+}
+
+.demoHint {
+    font-family: $font-mono;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    color: $ink-quiet;
+}
+
 .heroDate {
     position: absolute;
     top: clamp(60px, 10vh, 130px);
