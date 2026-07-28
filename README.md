@@ -54,7 +54,7 @@ flowchart TB
     Pipeline["<b>Narrative Pipeline</b> (Python)<br/>orchestrator · 5 aggregators<br/>silence discipline"]
     Letter["Weekly Letter"]
 
-    MCP["<b>MCP Server</b> (Anthropic SDK)<br/>4 purpose-designed tools"]
+    MCP["<b>MCP Server</b> (Anthropic SDK)<br/>8 tools · read + write · OAuth 2.1"]
 
     User -->|saves notes| NoteWorker
     NoteWorker --> Mongo
@@ -83,11 +83,13 @@ The note pipeline is real-time and per-note. The narrative pipeline is batch and
 
 ### MCP tool descriptions as prompt engineering
 
-The MCP server exposes 4 tools to Claude, but the interesting work isn't the API surface — it's the descriptions. Each tool's description tells Claude *how to think about the data*, not just what it returns:
+The MCP server exposes 8 tools to Claude — 7 read-only, plus `save_memory` for writing new entries — but the interesting work isn't the API surface, it's the descriptions. Each tool's description tells Claude *how to think about the data*, not just what it returns:
 
 > *"sourceType: 'authored' means the user wrote this themselves; 'saved' means the user preserved external content. For 'saved' notes WITHOUT a description, do NOT treat the summary as the user's own thoughts."*
 
 This isn't documentation — it's instruction. The tool descriptions are where Claude learns that source provenance matters, that emotional trajectory should be drawn only from authored notes, that a saved poem isn't a confession. Whether and how Claude uses the context layer correctly depends on this prompt-engineering surface as much as on the data itself.
+
+Writes get the same treatment, with a sharper edge: `save_memory`'s description tells Claude to reuse an existing topic name exactly rather than inventing near-duplicates, to write self-contained content with no reference to "the conversation above," and to only write when the user clearly wants something remembered — not on every mildly interesting exchange. Reads can be over-fetched with little cost; writes accumulate permanently in the user's memory store, so the tool description is the only thing keeping it clean.
 
 ### The "why you saved it" design pivot
 
@@ -110,9 +112,10 @@ Each merge reinforces the concept's confidence with a convergence formula — `n
 - **Vector store:** Postgres + pgvector (Supabase)
 - **Frontend:** React · TypeScript · Vite · SSE
 - **AI:** OpenAI API · Anthropic MCP SDK
+- **Auth:** OAuth 2.1 + PKCE with dynamic client registration for the MCP layer (`mcp:read` / `mcp:write` scopes) · JWT for the app
 - **Infra:** Fly.io · Vercel
 
-**Status:** In production. Solo-built. Note pipeline, weekly narrative, MCP server, and landing page are all live. Roadmap: real OAuth for the MCP layer (currently long-lived bearer tokens), broader LLM provider support, and exposing the cognitive layer to a wider tool surface.
+**Status:** In production. Solo-built. Note pipeline, weekly narrative, MCP server (with OAuth 2.1 authorization and write access), and landing page are all live. Roadmap: broader LLM provider support, and exposing the cognitive layer to a wider tool surface.
 
 ---
 
