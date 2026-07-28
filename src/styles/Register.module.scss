@@ -23,6 +23,20 @@
     font-size: clamp(0.9rem, 1.5vw, 1.2rem);
 }
 
+.backLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: #666;
+    text-decoration: none;
+    margin-bottom: 0.75rem;
+
+    &:hover {
+        color: #007bff;
+    }
+}
+
 .title {
     text-align: center;
     font-size: 1.5rem;

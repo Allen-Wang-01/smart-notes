@@ -96,6 +96,7 @@ const Register: React.FC = () => {
         return (
             <div className={styles.registerPage}>
                 <div className={styles.registerCard}>
+                    <a href="/" className={styles.backLink}>← Back to Landing Page</a>
                     <h2 className={styles.title}>Register</h2>
                     {errors.server && <div className={styles.error}>{errors.server}</div>}
                     <form onSubmit={onSubmit} className={styles.form}>

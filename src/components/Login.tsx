@@ -68,6 +68,7 @@ const Login: React.FC = () => {
         return (
             <div className={styles.loginPage}>
                 <div className={styles.loginCard}>
+                    <a href="/" className={styles.backLink}>← Back to Landing Page</a>
                     <h2 className={styles.loginTitle}>Login</h2>
                     {errors.server && <p className={styles.errorMessage}>{errors.server}</p>}
                     <form onSubmit={onSubmit} noValidate>
