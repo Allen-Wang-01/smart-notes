@@ -92,10 +92,12 @@ Before writing or modifying any code, always follow this process:
 
 1. **Confirm requirements first.** Before touching any code, restate your understanding of what I want and confirm it with me. Do not start writing code until I have confirmed.
 
-2. **Ask for file locations instead of searching.** Before making changes, proactively ask me which files/modules need to be modified and their paths. I will provide them. Do not search the codebase on your own unless I explicitly ask you to — I will tell you where to look. This saves time and lets me review whether the targeted files are the right ones.
+2. **Search the codebase freely, then report what you found.** Locate the relevant files yourself. Before making changes, tell me which files you plan to modify and why, so I can confirm the targets are right.
 
 3. **Pause and ask when unclear.** While working, if anything is ambiguous, or if you encounter a conflict, an unexpected situation, or a decision point I haven't specified, stop and ask me for clarification rather than guessing or proceeding on assumptions.
 
 4. **Proceed only after alignment.** Only begin writing code once requirements are confirmed and the target files are agreed upon.
 
 5. **Write all code comments in English.** All comments in the code must be written in English, regardless of the language we are communicating in during our conversation. Commit messages should also be in English.
+
+6. **New files are TypeScript; existing `.js` files stay `.js`.** Every new backend or frontend file must be written in TypeScript (`.ts` / `.tsx`). Do not rewrite or rename existing `.js` files to TypeScript — keep editing them in place as JavaScript. A new `.ts` file may freely import an existing `.js` module (imports use the `.js` extension under `NodeNext` resolution). Backend TypeScript runs directly via `tsx` and is type-checked with `npm run typecheck` (`strict: true`, `noEmit`) — run it before handing work back.
