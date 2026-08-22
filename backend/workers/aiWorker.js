@@ -16,6 +16,20 @@ import { generateEmbedding } from "../lib/embeddings.js";
 import { processCognitiveUnits } from "../lib/cognitiveUnits.js"
 dotenv.config();
 const client = new OpenAI()
+const PROMPT_VERSION = 'v0' // note prompt version; evolves independently from the report prompt
+
+// Literal markers the model emits around its output. None of them may ever
+// reach the user. The longest one determines how much of the tail we hold
+// back while streaming, so a marker split across two chunks is never sent
+// out in pieces.
+const CONTENT_OPEN = "<CONTENT>"
+const CONTENT_CLOSE = "</CONTENT>"
+const METADATA_OPEN = "<METADATA>"
+const MAX_MARKER_LENGTH = Math.max(
+    CONTENT_OPEN.length,
+    CONTENT_CLOSE.length,
+    METADATA_OPEN.length
+)
 
 /**
  * BullMQ worker for AI note processing using OpenAI's Responses API
@@ -105,6 +119,28 @@ export async function startAIWorker() {
             let metadataBuffer = ""
             let contentBuffer = ""
             let mode = "CONTENT" // CONTENT | METADATA
+            let rawOutput = "" // unsplit raw stream output, for trace/debugging
+            let hasEmittedContent = false // used to trim the newline after <CONTENT>
+
+            /**
+             * Send a slice of content to the client. The wrapper tags are already
+             * gone by this point (stripped off contentBuffer); this only trims the
+             * whitespace that surrounded them. rawOutput is deliberately left
+             * untouched — the trace keeps the unstripped stream so leaks like this
+             * stay diagnosable.
+             */
+            const emitContent = (out, { isFinal = false } = {}) => {
+                if (!hasEmittedContent) out = out.trimStart()
+                if (isFinal) out = out.trimEnd()
+                if (!out) return
+
+                hasEmittedContent = true
+                streamedContent += out
+                sseManager.send(noteId, {
+                    type: "chunk",
+                    content: out,
+                })
+            }
 
             // TIMING
             let apiStart = null;
@@ -149,19 +185,25 @@ export async function startAIWorker() {
 
                         if (mode === "CONTENT") {
                             contentBuffer += text
-                            const marker = "<METADATA>"
-                            const markerIndex = contentBuffer.indexOf(marker)
+
+                            // Strip the wrapper tags across the WHOLE buffer, not
+                            // across the slice we are about to emit. A complete tag
+                            // can straddle the emit boundary (its head inside the
+                            // safe slice, its tail inside the held-back window), and
+                            // neither half would be recognised if we stripped
+                            // per-slice. The held-back window still guarantees an
+                            // *incomplete* tag is never emitted, so anything complete
+                            // is removed here before a single character goes out.
+                            contentBuffer = contentBuffer
+                                .split(CONTENT_OPEN).join('')
+                                .split(CONTENT_CLOSE).join('')
+
+                            const markerIndex = contentBuffer.indexOf(METADATA_OPEN)
                             if (markerIndex !== -1) {
                                 const before = contentBuffer.slice(0, markerIndex)
-                                const after = contentBuffer.slice(markerIndex + marker.length)
+                                const after = contentBuffer.slice(markerIndex + METADATA_OPEN.length)
                                 // streaming only real content
-                                if (before) {
-                                    streamedContent += before;
-                                    sseManager.send(noteId, {
-                                        type: "chunk",
-                                        content: before,
-                                    })
-                                }
+                                emitContent(before, { isFinal: true })
 
                                 // switch to METADATA mode
                                 mode = "METADATA";
@@ -173,19 +215,21 @@ export async function startAIWorker() {
                                 // stream only the safe part
                                 const safeLength = Math.max(
                                     0,
-                                    contentBuffer.length - (marker.length - 1)
+                                    contentBuffer.length - (MAX_MARKER_LENGTH - 1)
                                 );
 
                                 if (safeLength > 0) {
-                                    const safeContent = contentBuffer.slice(0, safeLength);
+                                    // Keep any trailing whitespace buffered. The blank
+                                    // lines before </CONTENT> would otherwise be flushed
+                                    // in an earlier batch, where the final trimEnd can
+                                    // no longer reach them.
+                                    let safeContent = contentBuffer.slice(0, safeLength);
+                                    safeContent = safeContent.slice(0, safeContent.trimEnd().length);
 
-                                    streamedContent += safeContent;
-                                    sseManager.send(noteId, {
-                                        type: "chunk",
-                                        content: safeContent,
-                                    });
-
-                                    contentBuffer = contentBuffer.slice(safeLength);
+                                    if (safeContent) {
+                                        emitContent(safeContent);
+                                        contentBuffer = contentBuffer.slice(safeContent.length);
+                                    }
                                 }
                             }
                         } else if (mode === "METADATA") {
