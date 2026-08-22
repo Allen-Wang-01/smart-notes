@@ -293,8 +293,10 @@ const NoteEditor = ({ note, isStreaming, streamError }: NoteEditorProps) => {
 
 // Renders raw plain-text content with paragraph breaks, drop cap on the first
 // paragraph, and clickable URLs.
-const RawContentBody = ({ text }: { text: string }) => {
+const RawContentBody = ({ text }: { text?: string }) => {
     const paragraphs = useMemo(() => splitParagraphs(text), [text]);
+
+    if (paragraphs.length === 0) return null;
 
     return (
         <div className={styles.rawBody}>
@@ -312,7 +314,8 @@ const RawContentBody = ({ text }: { text: string }) => {
 
 // Split on blank lines (paragraphs) but preserve hard line breaks within a
 // paragraph as-is (CSS uses white-space: pre-line on individual paragraphs).
-const splitParagraphs = (text: string): string[] => {
+const splitParagraphs = (text?: string): string[] => {
+    if (!text) return [];
     return text
         .split(/\n\s*\n/)
         .map((p) => p.trim())

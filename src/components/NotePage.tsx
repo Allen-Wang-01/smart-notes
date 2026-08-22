@@ -24,14 +24,17 @@ const NotePage = () => {
         renderDone,
     } = useNoteStream(id, shouldStream)
 
-    // 3. Database request (only when NOT streaming)
+    // 3. Database request.
+    // Runs while streaming too: the AI content arrives over SSE, but every
+    // other field (rawContent, sourceType, timestamps) only exists in the DB.
+    // Without this the streaming view renders a note with no original text.
     const { data: dbNote, isLoading, refetch, isError } = useQuery({
         queryKey: ["note", id],
         queryFn: async () => {
             const res = await api.get(`/notes/${id}`);
             return res.data.note;
         },
-        enabled: !!id && !shouldStream && !isStreaming,
+        enabled: !!id,
     });
 
 
@@ -49,23 +52,28 @@ const NotePage = () => {
     //Merge data
     const note = useMemo(() => {
         if (shouldStream) {
+            // Spread the DB note first so fields the stream doesn't carry
+            // (rawContent, sourceType, ...) stay present, then override only
+            // what the stream is authoritative for.
             return {
+                ...dbNote,
                 id,
-                title: streamTitle || "Generating...",
+                title: streamTitle || dbNote?.title || "Generating...",
                 content: streamContent || "",
                 created: dbNote?.created || new Date().toISOString(),
                 updated: dbNote?.updated || "",
                 status: "processing",
-                category: dbNote?.category || "meeting",
             }
         }
         return dbNote
-    }, [shouldStream, streamTitle, streamContent, dbNote, isStreaming])
+    }, [shouldStream, streamTitle, streamContent, dbNote, id])
 
 
 
     // 6. Loading / Error states
-    if (isLoading) {
+    // While streaming, the SSE content is already renderable — don't hide it
+    // behind the spinner just because the DB fetch is still in flight.
+    if (isLoading && !shouldStream) {
         return (
             <div className={styles.noteState}>
                 <div className={styles.spinner} />
