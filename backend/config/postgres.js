@@ -157,11 +157,16 @@ async function upsert(table, values, { onConflict = [] } = {}) {
     const start = Date.now()
 
     try {
+        // Only pass onConflict when the caller actually supplied columns.
+        // An empty array would join to "" and be sent as `on_conflict=`,
+        // which PostgREST rejects with "failed to parse on_conflict parameter ()".
+        const options = onConflict.length
+            ? { onConflict: onConflict.join(',') }
+            : undefined
+
         const { data, error } = await supabase
             .from(table)
-            .upsert(values, {
-                onConflict: onConflict.join(','),
-            })
+            .upsert(values, options)
             .select()
 
         if (error) throw error

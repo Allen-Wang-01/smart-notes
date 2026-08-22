@@ -98,5 +98,8 @@ export async function saveNoteEmbedding({ noteId, userId, embedding }) {
         note_id: String(noteId),
         user_id: String(userId),
         embedding,
+    }, {
+        // note_id is the primary key: re-processing a note overwrites its vector.
+        onConflict: ['note_id'],
     });
 }
