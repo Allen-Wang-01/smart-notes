@@ -121,7 +121,10 @@ export function startReportWorker() {
                 // generateReportText() retries internally with exponential backoff.
                 // If all retries fail it throws, which lands us in the catch block.
                 log.info('llm_started')
-                const llmResult = await generateReportText(reportJson.snapshot)
+                const llmResult = await generateReportText(reportJson.snapshot, {
+                    userId: String(userId),
+                    recordId: String(reportId),
+                })
                 log.info('llm_completed')
 
                 // Save pipeline report to PostgreSQL

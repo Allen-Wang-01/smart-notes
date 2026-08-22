@@ -39,7 +39,10 @@ export async function saveMemory({
         throw new Error('saveMemory: userId, topic, and content are required')
     }
 
-    const embedding = await generateEmbedding(content)
+    const embedding = await generateEmbedding(content, {
+        callSite: 'saved_memory_embedding',
+        userId,
+    })
 
     const result = await db.insert('saved_memories', {
         user_id: String(userId),
@@ -141,7 +144,10 @@ export async function searchSavedMemories({
         throw new Error('searchSavedMemories: userId and query are required')
     }
 
-    const embedding = await generateEmbedding(query)
+    const embedding = await generateEmbedding(query, {
+        callSite: 'saved_memory_query_embedding',
+        userId,
+    })
 
     const result = await db.rpc('search_saved_memories', {
         query_embedding: embedding,

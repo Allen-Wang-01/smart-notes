@@ -14,10 +14,12 @@ import { z } from "zod"
 import OpenAI from "openai"
 import { zodTextFormat } from "openai/helpers/zod"
 import { createLogger } from "./logger.js"
+import { startTrace } from "../lib/trace.js"
 
 const log = createLogger('report-ai')
 const MAX_RETRIES = 3
 const BASE_DELAY_MS = 1_000 // 1s -> 2s -> 4s
+const PROMPT_VERSION = 'v0' // report prompt version; evolves independently from the note prompt
 
 const NON_RETRYABLE_STATUSES = new Set([400, 401, 403])
 
@@ -35,10 +37,12 @@ function isRetryable(err) {
 /**
  * Call the LLM to generate a structured report from a snapshot prompt.
  * @param {string} prompt - the snapshot string from build_snapshot()
- * @returns {Promise<{summary:string[], poeticLine: string}>}
+ * @param {{userId?: string, recordId?: string}} [meta] - trace metadata
+ * @returns {Promise<{paragraphs: string[]}>}
  */
 
-export async function generateReportText(prompt) {
+export async function generateReportText(prompt, meta = {}) {
+    const { userId, recordId } = meta
 
     const ReportOutputSchema = z.object({
         paragraphs: z.array(z.string()).min(1).max(5),
@@ -49,27 +53,40 @@ export async function generateReportText(prompt) {
 
     let lastError
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const requestParams = {
+            model: "gpt-5-nano",
+            input: [
+                {
+                    role: "system",
+                    content:
+                        "You are a thoughtful growth companion. Always respond in the requested JSON format."
+                },
+                {
+                    role: "user",
+                    content: prompt,
+                },
+            ],
+            text: {
+                format: zodTextFormat(ReportOutputSchema, "report")
+            },
+            store: false,
+        }
+
+        const rec = startTrace({
+            callSite: 'report_summary',
+            callType: 'completion',
+            model: 'gpt-5-nano',
+            userId,
+            recordId,
+            promptVersion: PROMPT_VERSION,
+            input: requestParams,
+            inputChars: prompt.length,
+        })
+
         try {
             log.info('llm_attempt', { attempt, maxRetries: MAX_RETRIES })
 
-            const response = await openai.responses.parse({
-                model: "gpt-5-nano",
-                input: [
-                    {
-                        role: "system",
-                        content:
-                            "You are a thoughtful growth companion. Always respond in the requested JSON format."
-                    },
-                    {
-                        role: "user",
-                        content: prompt,
-                    },
-                ],
-                text: {
-                    format: zodTextFormat(ReportOutputSchema, "report")
-                },
-                store: false,
-            })
+            const response = await openai.responses.parse(requestParams)
 
             const parsed = response.output_parsed
 
@@ -79,8 +96,18 @@ export async function generateReportText(prompt) {
             // log the full LLM response in development for easy inspection
             log.llm('llm_response_received', parsed)
             log.info('llm_succeeded', { attempt })
+
+            await rec.finish({
+                output: JSON.stringify(response.output_parsed),
+                inputTokens: response.usage?.input_tokens,
+                outputTokens: response.usage?.output_tokens,
+                cachedTokens: response.usage?.input_tokens_details?.cached_tokens ?? 0,
+            })
+
             return parsed
         } catch (err) {
+            await rec.fail(err)
+
             lastError = err
             log.warn('llm_attempt_failed', {
                 attempt,

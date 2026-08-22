@@ -14,6 +14,7 @@ import { rollbackNote } from "../services/noteRollbackService.js";
 import { searchRelatedNotes, saveNoteEmbedding } from "../lib/vectorSearch.js"
 import { generateEmbedding } from "../lib/embeddings.js";
 import { processCognitiveUnits } from "../lib/cognitiveUnits.js"
+import { startTrace } from "../lib/trace.js"
 dotenv.config();
 const client = new OpenAI()
 const PROMPT_VERSION = 'v0' // note prompt version; evolves independently from the report prompt
@@ -146,14 +147,22 @@ export async function startAIWorker() {
             let apiStart = null;
             let firstToken = null;
 
+            // USAGE (populated from response.completed / .incomplete / .failed)
+            let inputTokens = null
+            let outputTokens = null
+            let cachedTokens = null
+
+            // TRACE
+            let rec = null
+            let traceClosed = false
+
 
             try {
                 heartbeat.start()
                 // OpenAI call
                 log.info('llm_started')
-                apiStart = Date.now();
-                // Use Responses API with streaming and JSON
-                const stream = await client.responses.create({
+
+                const requestParams = {
                     model: 'gpt-5-nano',
                     input: [
                         {
@@ -164,7 +173,22 @@ export async function startAIWorker() {
                     ],
                     stream: true,
                     store: false,
+                }
+
+                rec = startTrace({
+                    callSite: 'note_analysis',
+                    callType: 'completion',
+                    model: 'gpt-5-nano',
+                    userId,
+                    recordId: String(note._id),
+                    promptVersion: PROMPT_VERSION,
+                    input: requestParams,
+                    inputChars: prompt.length,
                 })
+
+                apiStart = Date.now();
+                // Use Responses API with streaming and JSON
+                const stream = await client.responses.create(requestParams)
 
                 log.info('llm_request_accepted', { durationMs: Date.now() - apiStart })
 
@@ -172,6 +196,7 @@ export async function startAIWorker() {
                     // First token
                     if (!firstToken && chunk.type === "response.output_text.delta") {
                         firstToken = Date.now()
+                        rec.markFirstToken()
                         log.info('llm_first_token', { durationMs: firstToken - apiStart })
                     }
 
@@ -179,6 +204,7 @@ export async function startAIWorker() {
 
                     if (chunk.type === "response.output_text.delta") {
                         const text = chunk.delta || ""
+                        rawOutput += text
 
                         // ===== CONTENT MODE =====
 
@@ -249,9 +275,29 @@ export async function startAIWorker() {
                             mode,
                         })
                         log.info('llm_stream_done', { streamedChars: streamedContent.length })
-                        break;
+                    }
+
+                    if (
+                        chunk.type === "response.completed" ||
+                        chunk.type === "response.incomplete" ||
+                        chunk.type === "response.failed"
+                    ) {
+                        const usage = chunk.response?.usage
+                        if (usage) {
+                            inputTokens = usage.input_tokens ?? null
+                            outputTokens = usage.output_tokens ?? null
+                            cachedTokens = usage.input_tokens_details?.cached_tokens ?? null
+                        }
                     }
                 }
+
+                traceClosed = true
+                await rec.finish({
+                    output: rawOutput,
+                    inputTokens,
+                    outputTokens,
+                    cachedTokens,
+                })
 
 
                 // -------------------------------------------------
@@ -317,6 +363,10 @@ export async function startAIWorker() {
 
             } catch (error) {
                 log.error('job_failed', { error: error.message, stack: error.stack })
+                if (rec && !traceClosed) {
+                    traceClosed = true
+                    await rec.fail(error)
+                }
                 //throw error, BullMQ will handle retry
                 throw error
             } finally {
@@ -467,7 +517,11 @@ async function runPostProcessing({ note, userId, summary, cognitiveUnits, log })
     // Prefer summary (richer semantic signature) over rawContent.
     const embeddingInput = summary || note.rawContent
     try {
-        const embedding = await generateEmbedding(embeddingInput)
+        const embedding = await generateEmbedding(embeddingInput, {
+            callSite: 'note_embedding',
+            userId,
+            recordId: String(note._id),
+        })
         await saveNoteEmbedding({
             noteId: String(note._id),
             userId,

@@ -42,7 +42,10 @@ export async function searchRelatedNotes({
     }
 
     // 1. Generate query embedding (skip if caller already has one)
-    const queryEmbedding = precomputedEmbedding || await generateEmbedding(text);
+    const queryEmbedding = precomputedEmbedding || await generateEmbedding(text, {
+        callSite: 'search_query_embedding',
+        userId,
+    });
 
     // 2. Call Postgres function for vector search
     const rpcResult = await db.rpc('search_related_notes', {

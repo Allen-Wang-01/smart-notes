@@ -57,7 +57,10 @@ export async function getUserProfile({ userId, focus = null, limit = 15, focusEm
 
     if (focus && typeof focus === 'string') {
         // Focus-driven: semantic search cognitive units that match the focus
-        const embedding = focusEmbedding || await generateEmbedding(focus);
+        const embedding = focusEmbedding || await generateEmbedding(focus, {
+            callSite: 'mcp_search_query_embedding',
+            userId,
+        });
 
         const rpcResult = await db.rpc('search_similar_cognitive_units', {
             query_embedding: embedding,
@@ -176,7 +179,10 @@ export async function getFullContext({ userId, topic }) {
 
     // Compute the topic embedding once and reuse it across the
     // two semantic-search subcalls. Recent context doesn't need it.
-    const topicEmbedding = await generateEmbedding(topic);
+    const topicEmbedding = await generateEmbedding(topic, {
+        callSite: 'mcp_topic_query_embedding',
+        userId,
+    });
 
     // Run all three layers in parallel for speed.
     const [stableProfile, recentContext, relevantSpecifics] = await Promise.all([

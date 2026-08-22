@@ -48,7 +48,10 @@ async function processSingleUnit({ userId, unit }) {
     // Embed (concept + context) together so the semantic signature
     // captures both the entity and how it's used.
     const embeddingInput = `${concept}: ${context}`
-    const embedding = await generateEmbedding(embeddingInput)
+    const embedding = await generateEmbedding(embeddingInput, {
+        callSite: 'cognitive_unit_embedding',
+        userId,
+    })
 
     // Look for an existing semantically-equivalent unit
     const rpcResult = await db.rpc('search_similar_cognitive_units', {
