@@ -73,7 +73,7 @@ export async function generateReportText(prompt) {
 
             const parsed = response.output_parsed
 
-            if (!parsed || !Array.isArray(parsed.summary) || !parsed.poeticLine) {
+            if (!parsed || !Array.isArray(parsed.paragraphs) || parsed.paragraphs.length === 0) {
                 throw new Error('LLM returned unexpected output shape')
             }
             // log the full LLM response in development for easy inspection

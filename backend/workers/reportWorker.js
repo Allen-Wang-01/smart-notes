@@ -7,7 +7,7 @@
  * 2. Fetch notes from MongoDB
  * 3. Fetch previous pipeline -> report_json + snapshot
  * 4. Run Python analytics pipeline -> report_json + snapshot
- * 5. Call LLM with snapshot -> summary + poeticLine
+ * 5. Call LLM with snapshot -> paragraphs
  * 6. Save pipeline report to PostgreSQL (for next period's trend)
  * 7. Update MongoDB report document -> completed
  * 
@@ -160,8 +160,7 @@ export function startReportWorker() {
                     { _id: reportId, status: 'processing' },
                     {
                         status: 'completed',
-                        content: llmResult.summary,
-                        poeticLine: llmResult.poeticLine,
+                        content: llmResult.paragraphs,
                         stats,
                         generatedAt: new Date(),
                     }
