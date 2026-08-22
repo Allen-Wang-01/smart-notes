@@ -54,10 +54,10 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
     await checkConnection() // check postgreSQL connection
-    if (process.env.NODE_ENV === 'production') {
-        const { startWeeklyReportJob } = await import('./jobs/generateWeeklyReports.js');
-        startWeeklyReportJob()
-        console.log('[Server] Cron jobs loaded: weekly (Sun 00:00), monthly (1st 00:05) JST');
-    }
+    // if (process.env.NODE_ENV === 'production') {
+    //     const { startWeeklyReportJob } = await import('./jobs/generateWeeklyReports.js');
+    //     startWeeklyReportJob()
+    //     console.log('[Server] Cron jobs loaded: weekly (Sun 00:00), monthly (1st 00:05) JST');
+    // }
 });
 
